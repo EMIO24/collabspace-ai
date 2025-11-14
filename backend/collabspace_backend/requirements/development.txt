@@ -1,0 +1,6 @@
+-r base.txt
+
+django-debug-toolbar==4.2.0
+ipython==8.18.1
+factory-boy==3.3.0
+faker==20.1.0
