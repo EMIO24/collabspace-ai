@@ -1,0 +1,487 @@
+# 🧪 CollabSpace AI - Authentication Testing Guide
+
+## 📋 Prerequisites
+
+Before testing, make sure you've completed these steps:
+
+### 1. Install Missing Python Packages
+
+```bash
+cd backend
+source venv/bin/activate
+
+# Install 2FA dependencies
+pip install pyotp qrcode[pil]
+
+# Update requirements
+pip freeze > requirements/base.txt
+```
+
+### 2. Update .env File
+
+Add to `backend/.env`:
+```bash
+FRONTEND_URL=http://localhost:3000
+```
+
+### 3. Run Database Migrations
+
+```bash
+cd backend
+source venv/bin/activate
+
+# Create migrations
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
+
+# Create superuser (for admin access)
+python manage.py createsuperuser
+```
+
+---
+
+## 🚀 Start the Development Server
+
+```bash
+cd backend
+source venv/bin/activate
+python manage.py runserver
+```
+
+Server will start at: **http://localhost:8000**
+
+---
+
+## 📡 API Endpoints to Test
+
+### Base URL
+```
+http://localhost:8000/api/auth/
+```
+
+---
+
+## 1️⃣ User Registration
+
+### Endpoint
+```http
+POST /api/auth/register/
+```
+
+### Request Body
+```json
+{
+  "email": "john@example.com",
+  "username": "johndoe",
+  "password": "SecurePass123!",
+  "password_confirm": "SecurePass123!",
+  "first_name": "John",
+  "last_name": "Doe"
+}
+```
+
+### cURL Command
+```bash
+curl -X POST http://localhost:8000/api/auth/register/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "username": "johndoe",
+    "password": "SecurePass123!",
+    "password_confirm": "SecurePass123!",
+    "first_name": "John",
+    "last_name": "Doe"
+  }'
+```
+
+### Expected Response (201 Created)
+```json
+{
+  "message": "Registration successful. Please check your email to verify your account.",
+  "user": {
+    "id": "uuid-here",
+    "email": "john@example.com",
+    "username": "johndoe",
+    "first_name": "John",
+    "last_name": "Doe",
+    "full_name": "John Doe",
+    "is_email_verified": false,
+    "plan_type": "free"
+  },
+  "tokens": {
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "access": "eyJ0eXAiOiJKV1QiLCJhbGc..."
+  }
+}
+```
+
+---
+
+## 2️⃣ User Login
+
+### Endpoint
+```http
+POST /api/auth/login/
+```
+
+### Request Body
+```json
+{
+  "email": "john@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+### cURL Command
+```bash
+curl -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+### Expected Response (200 OK)
+```json
+{
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "user": {
+    "id": "uuid-here",
+    "email": "john@example.com",
+    "username": "johndoe",
+    "full_name": "John Doe"
+  }
+}
+```
+
+**Save the `access` token - you'll need it for authenticated requests!**
+
+---
+
+## 3️⃣ Get User Profile
+
+### Endpoint
+```http
+GET /api/auth/profile/
+```
+
+### Headers Required
+```
+Authorization: Bearer <your_access_token>
+```
+
+### cURL Command
+```bash
+curl -X GET http://localhost:8000/api/auth/profile/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
+```
+
+### Expected Response (200 OK)
+```json
+{
+  "id": "uuid-here",
+  "email": "john@example.com",
+  "username": "johndoe",
+  "first_name": "John",
+  "last_name": "Doe",
+  "full_name": "John Doe",
+  "avatar": null,
+  "bio": "",
+  "location": "",
+  "timezone": "UTC",
+  "phone_number": "",
+  "is_email_verified": false,
+  "two_factor_enabled": false,
+  "plan_type": "free",
+  "date_joined": "2025-11-15T10:30:00Z",
+  "last_login": "2025-11-15T10:35:00Z",
+  "last_activity": "2025-11-15T10:35:00Z"
+}
+```
+
+---
+
+## 4️⃣ Update User Profile
+
+### Endpoint
+```http
+PUT /api/auth/profile/
+```
+
+### Request Body
+```json
+{
+  "first_name": "John",
+  "last_name": "Smith",
+  "bio": "Software Engineer at CollabSpace",
+  "location": "San Francisco, CA",
+  "timezone": "America/Los_Angeles"
+}
+```
+
+### cURL Command
+```bash
+curl -X PUT http://localhost:8000/api/auth/profile/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "John",
+    "last_name": "Smith",
+    "bio": "Software Engineer",
+    "location": "San Francisco"
+  }'
+```
+
+---
+
+## 5️⃣ Change Password
+
+### Endpoint
+```http
+POST /api/auth/change-password/
+```
+
+### Request Body
+```json
+{
+  "old_password": "SecurePass123!",
+  "new_password": "NewSecurePass456!",
+  "new_password_confirm": "NewSecurePass456!"
+}
+```
+
+### cURL Command
+```bash
+curl -X POST http://localhost:8000/api/auth/change-password/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "old_password": "SecurePass123!",
+    "new_password": "NewSecurePass456!",
+    "new_password_confirm": "NewSecurePass456!"
+  }'
+```
+
+---
+
+## 6️⃣ Request Password Reset
+
+### Endpoint
+```http
+POST /api/auth/reset-password/
+```
+
+### Request Body
+```json
+{
+  "email": "john@example.com"
+}
+```
+
+### cURL Command
+```bash
+curl -X POST http://localhost:8000/api/auth/reset-password/ \
+  -H "Content-Type: application/json" \
+  -d '{"email": "john@example.com"}'
+```
+
+**Note:** Check console/logs for reset token (since email isn't configured in dev)
+
+---
+
+## 7️⃣ Refresh Access Token
+
+### Endpoint
+```http
+POST /api/auth/refresh/
+```
+
+### Request Body
+```json
+{
+  "refresh": "your_refresh_token_here"
+}
+```
+
+### cURL Command
+```bash
+curl -X POST http://localhost:8000/api/auth/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{"refresh": "YOUR_REFRESH_TOKEN_HERE"}'
+```
+
+---
+
+## 8️⃣ Logout
+
+### Endpoint
+```http
+POST /api/auth/logout/
+```
+
+### Request Body
+```json
+{
+  "refresh_token": "your_refresh_token_here"
+}
+```
+
+### cURL Command
+```bash
+curl -X POST http://localhost:8000/api/auth/logout/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "YOUR_REFRESH_TOKEN_HERE"}'
+```
+
+---
+
+## 🧰 Testing Tools
+
+### Option 1: Postman
+
+1. Download [Postman](https://www.postman.com/downloads/)
+2. Import the following collection:
+   - Create new request
+   - Set method and URL
+   - Add headers: `Content-Type: application/json`
+   - For authenticated requests: `Authorization: Bearer <token>`
+   - Add request body as JSON
+
+### Option 2: HTTPie (Recommended for CLI)
+
+```bash
+# Install
+pip install httpie
+
+# Register
+http POST http://localhost:8000/api/auth/register/ \
+  email=john@example.com \
+  username=johndoe \
+  password=SecurePass123! \
+  password_confirm=SecurePass123! \
+  first_name=John \
+  last_name=Doe
+
+# Login
+http POST http://localhost:8000/api/auth/login/ \
+  email=john@example.com \
+  password=SecurePass123!
+
+# Get profile (with token)
+http GET http://localhost:8000/api/auth/profile/ \
+  "Authorization: Bearer YOUR_TOKEN_HERE"
+```
+
+### Option 3: Django REST Framework Browsable API
+
+1. Visit: **http://localhost:8000/api/auth/register/**
+2. You'll see a web interface to test endpoints
+3. Click "POST" to send requests
+4. View formatted responses
+
+---
+
+## 🎯 Testing Checklist
+
+### Basic Authentication
+- [ ] Register new user
+- [ ] Login with credentials
+- [ ] Get user profile
+- [ ] Update user profile
+- [ ] Change password
+- [ ] Logout
+
+### Token Management
+- [ ] Refresh access token
+- [ ] Verify token expiration (wait 15 min)
+- [ ] Test invalid token
+
+### Password Reset
+- [ ] Request password reset
+- [ ] Confirm password reset with token
+
+### Email Verification
+- [ ] Verify email with token
+- [ ] Resend verification email
+
+### Error Handling
+- [ ] Register with existing email
+- [ ] Login with wrong password
+- [ ] Access protected route without token
+- [ ] Use invalid/expired token
+
+---
+
+## 🐛 Common Issues & Solutions
+
+### Issue 1: "ModuleNotFoundError: No module named 'pyotp'"
+**Solution:**
+```bash
+pip install pyotp qrcode[pil]
+```
+
+### Issue 2: "No such table: users"
+**Solution:**
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+### Issue 3: "FRONTEND_URL not found"
+**Solution:** Add to `.env`:
+```bash
+FRONTEND_URL=http://localhost:3000
+```
+
+### Issue 4: Email not sending
+**Solution:** In development, emails are printed to console. Check your terminal output.
+
+### Issue 5: "Authentication credentials were not provided"
+**Solution:** Make sure you're including the Authorization header:
+```
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+---
+
+## 📊 Expected Test Results
+
+### All Tests Passing:
+```
+✅ User Registration - 201 Created
+✅ User Login - 200 OK with tokens
+✅ Get Profile - 200 OK with user data
+✅ Update Profile - 200 OK
+✅ Change Password - 200 OK
+✅ Token Refresh - 200 OK with new token
+✅ Logout - 200 OK
+```
+
+---
+
+## 🎉 Next Steps
+
+Once authentication is working:
+
+1. ✅ **Test all auth endpoints** - Use the checklist above
+2. ✅ **Access Django Admin** - Go to http://localhost:8000/admin/
+3. ✅ **Check API Documentation** - Visit http://localhost:8000/api/docs/
+4. 🚀 **Move to Workspaces Module** - Build workspace management
+
+---
+
+## 💡 Pro Tips
+
+1. **Save your tokens** - Store them in environment variables or a file
+2. **Use Postman Collections** - Save all requests for easy re-testing
+3. **Check logs** - `tail -f logs/django.log` for debugging
+4. **Use Django Shell** - `python manage.py shell` to test models directly
+
+---
+
+**Ready to test? Start the server and try the registration endpoint!** 🚀
