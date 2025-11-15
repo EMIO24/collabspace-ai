@@ -70,6 +70,13 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # core middleware
+    'apps.core.middleware.ActivityTrackingMiddleware',
+    'apps.core.middleware.RequestLoggingMiddleware',
+    'apps.core.middleware.APIVersionMiddleware',
+    'apps.core.middleware.RateLimitMiddleware',
+    'apps.core.middleware.CORSMiddleware',
 ]
 
 ROOT_URLCONF = 'collabspace_backend.urls'
@@ -272,6 +279,7 @@ REST_FRAMEWORK = {
     
     # Exception handling
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    "EXCEPTION_HANDLER": "apps.core.exceptions.custom_exception_handler",
     
     # Schema generation
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
