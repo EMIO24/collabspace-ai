@@ -1,0 +1,959 @@
+"""
+COMPLETE TASK API ENDPOINTS:
+
+1. TASK CRUD:
+   GET    /api/tasks/                    - List tasks (with filters)
+   POST   /api/tasks/                    - Create task
+   GET    /api/tasks/{id}/               - Get task detail
+   PUT    /api/tasks/{id}/               - Update task
+   PATCH  /api/tasks/{id}/               - Partial update
+   DELETE /api/tasks/{id}/               - Delete task
+
+2. TASK ACTIONS:
+   POST   /api/tasks/{id}/assign_task/          - Assign to user
+   POST   /api/tasks/{id}/update_status/        - Update status
+   POST   /api/tasks/{id}/add_comment/          - Add comment
+   POST   /api/tasks/{id}/upload_attachment/    - Upload file
+   POST   /api/tasks/{id}/log_time/             - Log time
+   POST   /api/tasks/{id}/add_dependency/       - Add dependency
+   POST   /api/tasks/{id}/duplicate/            - Duplicate task
+   GET    /api/tasks/{id}/subtasks/             - Get subtasks
+   GET    /api/tasks/{id}/timeline/             - Get timeline
+
+3. BULK OPERATIONS:
+   POST   /api/tasks/reorder/              - Drag & drop reorder
+   POST   /api/tasks/bulk_operations/      - Bulk update/delete/etc
+   POST   /api/tasks/bulk_update/          - Bulk update (legacy)
+   POST   /api/tasks/bulk_delete/          - Bulk delete (legacy)
+
+4. SEARCH & ANALYTICS:
+   POST   /api/tasks/advanced_search/      - Advanced search
+   GET    /api/tasks/analytics/            - Get analytics
+   GET    /api/tasks/my_tasks/             - Current user's tasks
+   GET    /api/tasks/stats/                - Task statistics
+
+5. TEMPLATES:
+   GET    /api/templates/                  - List templates
+   POST   /api/templates/                  - Create template
+   GET    /api/templates/{id}/             - Get template
+   PUT    /api/templates/{id}/             - Update template
+   DELETE /api/templates/{id}/             - Delete template
+   POST   /api/templates/{id}/instantiate/ - Create task from template
+   GET    /api/templates/popular/          - Popular templates
+   GET    /api/templates/by_category/      - Templates by category
+
+QUERY PARAMETERS:
+- project=123                    - Filter by project
+- status=todo,in_progress        - Multiple statuses
+- priority=high,urgent           - Multiple priorities
+- assigned_to_me=true            - My assigned tasks
+- created_by_me=true             - My created tasks
+- root_only=true                 - Root tasks only
+- is_overdue=true                - Overdue tasks
+- has_subtasks=true              - Tasks with subtasks
+- is_blocked=true                - Blocked tasks
+- unassigned=true                - Unassigned tasks
+- tags=bug,feature               - Filter by tags
+- due_date_from=2024-01-01       - Due after date
+- due_date_to=2024-12-31         - Due before date
+- search=keyword                 - Search text
+- created_last_days=7            - Created in last N days
+- due_next_days=7                - Due in next N days
+- has_comments=true              - Has comments
+- has_attachments=true           - Has attachments
+- completion_status=blocked      - Completion status
+- ordering=due_date,-priority    - Sort order
+
+BULK OPERATIONS:
+Operations: update_status, update_priority, assign, add_tags, 
+           remove_tags, set_due_date, move_to_project, archive, 
+           delete, duplicate, export
+
+Example:
+POST /api/tasks/bulk_operations/
+{
+  "task_ids": [1, 2, 3],
+  "operation": "update_status",
+  "status": "in_progress"
+}
+
+DRAG & DROP:
+POST /api/tasks/reorder/
+{
+  "task_id": 123,
+  "new_position": 5,
+  "parent_task_id": 456
+}
+
+ADVANCED SEARCH:
+POST /api/tasks/advanced_search/
+{
+  "query": "bug fix",
+  "search_fields": ["title", "description", "tags", "comments"],
+  "filters": {
+    "status": ["todo", "in_progress"],
+    "priority": ["high", "urgent"],
+    "project": [1, 2, 3]
+  },
+  "limit": 50
+}
+
+TASK TEMPLATES:
+POST /api/templates/{id}/instantiate/
+{
+  "project_id": 123,
+  "assigned_to_id": 456,
+  "due_date": "2024-12-31T23:59:59Z",
+  "template_vars": {
+    "project_name": "My Project",
+    "sprint_number": "5"
+  }
+}
+"""
+
+# CollabSpace Tasks API - Complete Usage Guide
+
+## Table of Contents
+1. [Getting Started](#getting-started)
+2. [Basic CRUD Operations](#basic-crud-operations)
+3. [Bulk Operations](#bulk-operations)
+4. [Drag and Drop (Reordering)](#drag-and-drop)
+5. [Advanced Search](#advanced-search)
+6. [Task Templates](#task-templates)
+7. [Filtering](#filtering)
+8. [Analytics](#analytics)
+9. [Time Tracking](#time-tracking)
+10. [Dependencies](#dependencies)
+
+---
+
+## Getting Started
+
+All API requests require authentication. Include your token in the header:
+
+```bash
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Base URL: `https://api.collabspace.com/api/`
+
+---
+
+## Basic CRUD Operations
+
+### List Tasks
+
+```bash
+GET /api/tasks/
+
+# Query Parameters:
+# - page=1
+# - page_size=20
+# - project=123
+# - status=todo
+# - priority=high
+# - assigned_to_me=true
+```
+
+**Response:**
+```json
+{
+  "count": 150,
+  "next": "https://api.collabspace.com/api/tasks/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "title": "Fix login bug",
+      "status": "in_progress",
+      "priority": "high",
+      "assigned_to": {
+        "id": 5,
+        "username": "john_doe",
+        "email": "john@example.com"
+      },
+      "project": 123,
+      "project_name": "Web Application",
+      "due_date": "2024-12-31T23:59:59Z",
+      "estimated_hours": "8.00",
+      "actual_hours": "5.50",
+      "tags": ["bug", "urgent"],
+      "is_overdue": false,
+      "is_blocked": false,
+      "subtask_count": 3,
+      "comment_count": 5,
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+### Create Task
+
+```bash
+POST /api/tasks/
+Content-Type: application/json
+
+{
+  "project": 123,
+  "title": "Implement user authentication",
+  "description": "Add JWT-based authentication system",
+  "status": "todo",
+  "priority": "high",
+  "assigned_to_id": 5,
+  "due_date": "2024-12-31T23:59:59Z",
+  "estimated_hours": "16.00",
+  "tags": ["feature", "security"],
+  "parent_task_id": null
+}
+```
+
+### Get Task Detail
+
+```bash
+GET /api/tasks/123/
+```
+
+**Response includes:**
+- Full task details
+- Nested subtasks
+- Comments with replies
+- Attachments
+- Time entries
+- Dependencies
+- Blocking/blocked tasks
+- Collaborators
+- Activity metrics
+
+### Update Task
+
+```bash
+PATCH /api/tasks/123/
+Content-Type: application/json
+
+{
+  "title": "Updated task title",
+  "priority": "urgent",
+  "due_date": "2024-12-25T23:59:59Z"
+}
+```
+
+### Delete Task (Soft Delete)
+
+```bash
+DELETE /api/tasks/123/
+```
+
+---
+
+## Bulk Operations
+
+### Bulk Update Tasks
+
+```bash
+POST /api/tasks/bulk_operations/
+Content-Type: application/json
+
+{
+  "task_ids": [1, 2, 3, 4, 5],
+  "operation": "update_status",
+  "status": "in_progress"
+}
+```
+
+**Available Operations:**
+- `update_status` - Change status
+- `update_priority` - Change priority
+- `assign` - Assign to user
+- `add_tags` - Add tags
+- `remove_tags` - Remove tags
+- `set_due_date` - Set due date
+- `move_to_project` - Move to different project
+- `archive` - Archive tasks
+- `delete` - Delete tasks
+- `duplicate` - Duplicate tasks
+- `export` - Export to CSV
+
+### Examples:
+
+**Assign Multiple Tasks:**
+```json
+{
+  "task_ids": [1, 2, 3],
+  "operation": "assign",
+  "assigned_to_id": 5
+}
+```
+
+**Add Tags:**
+```json
+{
+  "task_ids": [1, 2, 3],
+  "operation": "add_tags",
+  "tags": ["sprint-5", "backend"]
+}
+```
+
+**Set Due Date:**
+```json
+{
+  "task_ids": [1, 2, 3],
+  "operation": "set_due_date",
+  "due_date": "2024-12-31T23:59:59Z"
+}
+```
+
+**Duplicate Tasks:**
+```json
+{
+  "task_ids": [1, 2],
+  "operation": "duplicate"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "affected_count": 3,
+  "message": "Updated status to in_progress",
+  "duplicated_ids": [10, 11]  // Only for duplicate operation
+}
+```
+
+---
+
+## Drag and Drop (Reordering)
+
+### Reorder Task Position
+
+```bash
+POST /api/tasks/reorder/
+Content-Type: application/json
+
+{
+  "task_id": 123,
+  "new_position": 5,
+  "parent_task_id": 456  // Optional: change parent
+}
+```
+
+**Use Cases:**
+- Reorder tasks within a project
+- Move task to different parent (change subtask hierarchy)
+- Reorder kanban board columns
+
+**Response:**
+```json
+{
+  "message": "Task reordered successfully",
+  "task_id": 123,
+  "new_position": 5,
+  "parent_task_id": 456
+}
+```
+
+---
+
+## Advanced Search
+
+### Search with Multiple Criteria
+
+```bash
+POST /api/tasks/advanced_search/
+Content-Type: application/json
+
+{
+  "query": "authentication bug",
+  "search_fields": ["title", "description", "tags", "comments"],
+  "filters": {
+    "status": ["todo", "in_progress"],
+    "priority": ["high", "urgent"],
+    "project": [1, 2, 3],
+    "assigned_to": [5, 10]
+  },
+  "limit": 50
+}
+```
+
+**Response:**
+```json
+{
+  "count": 12,
+  "results": [
+    {
+      "id": 123,
+      "title": "Fix authentication bug",
+      "status": "in_progress",
+      "priority": "high",
+      ...
+    }
+  ]
+}
+```
+
+---
+
+## Task Templates
+
+### List Templates
+
+```bash
+GET /api/templates/
+
+# Query Parameters:
+# - category=Bug Fix
+# - is_public=true
+# - search=feature
+```
+
+### Create Template
+
+```bash
+POST /api/templates/
+Content-Type: application/json
+
+{
+  "name": "Bug Fix Template",
+  "description": "Standard template for bug fixes",
+  "title_template": "Fix: {issue_description}",
+  "description_template": "Bug found in {project_name}\n\nSteps to reproduce:\n{steps}",
+  "default_priority": "high",
+  "default_estimated_hours": "4.00",
+  "default_tags": ["bug", "needs-investigation"],
+  "category": "Bug Fix",
+  "is_public": false,
+  "subtask_templates": [
+    {
+      "title": "Investigate root cause",
+      "priority": "high",
+      "estimated_hours": "1.00"
+    },
+    {
+      "title": "Implement fix",
+      "priority": "high",
+      "estimated_hours": "2.00"
+    },
+    {
+      "title": "Write tests",
+      "priority": "medium",
+      "estimated_hours": "1.00"
+    }
+  ],
+  "checklist_items": [
+    "Code reviewed",
+    "Tests passing",
+    "Documentation updated"
+  ]
+}
+```
+
+### Create Task from Template
+
+```bash
+POST /api/templates/123/instantiate/
+Content-Type: application/json
+
+{
+  "project_id": 456,
+  "assigned_to_id": 5,
+  "due_date": "2024-12-31T23:59:59Z",
+  "template_vars": {
+    "issue_description": "Users cannot login after password reset",
+    "project_name": "Web Application",
+    "steps": "1. Reset password\n2. Try to login\n3. Error appears"
+  },
+  "title": "Custom Title Override",  // Optional override
+  "priority": "urgent"  // Optional override
+}
+```
+
+### Get Popular Templates
+
+```bash
+GET /api/templates/popular/
+```
+
+### Get Templates by Category
+
+```bash
+GET /api/templates/by_category/
+```
+
+**Response:**
+```json
+{
+  "Bug Fix": [...],
+  "Feature": [...],
+  "Research": [...]
+}
+```
+
+---
+
+## Filtering
+
+### Filter Query Parameters
+
+```bash
+# Single filters
+GET /api/tasks/?status=todo
+GET /api/tasks/?priority=high
+GET /api/tasks/?assigned_to=5
+
+# Multiple filters (comma-separated)
+GET /api/tasks/?statuses=todo,in_progress
+GET /api/tasks/?priorities=high,urgent
+GET /api/tasks/?assigned_users=5,10,15
+
+# Date filters
+GET /api/tasks/?due_date_from=2024-01-01
+GET /api/tasks/?due_date_to=2024-12-31
+GET /api/tasks/?created_at_from=2024-01-01T00:00:00Z
+
+# Tag filters
+GET /api/tasks/?tags=bug,urgent
+GET /api/tasks/?has_tags=true
+
+# Special filters
+GET /api/tasks/?is_overdue=true
+GET /api/tasks/?has_subtasks=true
+GET /api/tasks/?is_root=true
+GET /api/tasks/?unassigned=true
+GET /api/tasks/?has_dependencies=true
+GET /api/tasks/?is_blocked=true
+
+# Time-based filters
+GET /api/tasks/?created_last_days=7
+GET /api/tasks/?due_next_days=7
+
+# Collaboration filters
+GET /api/tasks/?has_comments=true
+GET /api/tasks/?has_attachments=true
+GET /api/tasks/?has_time_entries=true
+
+# Completion status
+GET /api/tasks/?completion_status=blocked
+
+# Search
+GET /api/tasks/?search=authentication
+
+# Ordering
+GET /api/tasks/?ordering=due_date,-priority
+
+# Pagination
+GET /api/tasks/?page=2&page_size=50
+```
+
+### Complex Filter Combinations
+
+```bash
+# Get overdue high-priority tasks assigned to me
+GET /api/tasks/?assigned_to_me=true&priority=high&is_overdue=true
+
+# Get tasks with subtasks created in last 30 days
+GET /api/tasks/?has_subtasks=true&created_last_days=30
+
+# Get blocked urgent tasks
+GET /api/tasks/?is_blocked=true&priority=urgent
+```
+
+---
+
+## Analytics
+
+### Get Task Analytics
+
+```bash
+GET /api/tasks/analytics/?project=123&group_by=status
+
+# Query Parameters:
+# - project_id=123
+# - user_id=5
+# - start_date=2024-01-01T00:00:00Z
+# - end_date=2024-12-31T23:59:59Z
+# - group_by=status|priority|assignee|date|tag
+```
+
+**Response:**
+```json
+{
+  "summary": {
+    "total_tasks": 150,
+    "completed": 75,
+    "in_progress": 40,
+    "overdue": 10,
+    "avg_estimated_hours": 8.5,
+    "total_estimated_hours": 1275
+  },
+  "grouped_data": [
+    {
+      "status": "todo",
+      "count": 35,
+      "avg_hours": 6.2
+    },
+    {
+      "status": "in_progress",
+      "count": 40,
+      "avg_hours": 8.5
+    },
+    {
+      "status": "done",
+      "count": 75,
+      "avg_hours": 9.1
+    }
+  ]
+}
+```
+
+### Get Task Statistics
+
+```bash
+GET /api/tasks/stats/?project=123
+```
+
+**Response:**
+```json
+{
+  "total_tasks": 150,
+  "completed_tasks": 75,
+  "completion_rate": 50.0,
+  "overdue_count": 10,
+  "due_soon_count": 15,
+  "status_distribution": [...],
+  "priority_distribution": [...],
+  "assignment_distribution": [...],
+  "time_stats": {
+    "total_estimated_hours": 1275.0,
+    "avg_estimated_hours": 8.5,
+    "total_actual_hours": 1050.5
+  }
+}
+```
+
+### Get My Tasks
+
+```bash
+GET /api/tasks/my_tasks/
+```
+
+**Response:**
+```json
+{
+  "assigned_to_me": [...],
+  "created_by_me": [...],
+  "due_today": [...],
+  "overdue": [...],
+  "in_progress": [...],
+  "watching": [...]
+}
+```
+
+---
+
+## Time Tracking
+
+### Log Time Entry
+
+```bash
+POST /api/tasks/123/log_time/
+Content-Type: application/json
+
+{
+  "hours": 2.5,
+  "description": "Implemented user authentication logic",
+  "date": "2024-01-15"
+}
+```
+
+### List Time Entries
+
+```bash
+GET /api/time-entries/?task=123
+GET /api/time-entries/?user=5
+GET /api/time-entries/?start_date=2024-01-01&end_date=2024-01-31
+GET /api/time-entries/?my_entries=true
+```
+
+### Get Time Entry Summary
+
+```bash
+GET /api/time-entries/summary/?start_date=2024-01-01&end_date=2024-01-31
+```
+
+**Response:**
+```json
+{
+  "total_hours": 160.5,
+  "entries_count": 45,
+  "by_task": [
+    {
+      "task__id": 123,
+      "task__title": "Implement auth",
+      "total_hours": 16.5,
+      "entries": 8
+    }
+  ],
+  "by_date": [
+    {
+      "date": "2024-01-15",
+      "total_hours": 8.0,
+      "entries": 4
+    }
+  ]
+}
+```
+
+---
+
+## Dependencies
+
+### Add Dependency
+
+```bash
+POST /api/tasks/123/add_dependency/
+Content-Type: application/json
+
+{
+  "depends_on": 456,
+  "dependency_type": "blocks"
+}
+```
+
+### View Dependencies
+
+Task details include:
+- `blocking_tasks` - Tasks blocking this one
+- `blocked_tasks` - Tasks this one is blocking
+- `is_blocked` - Boolean indicating if task can start
+
+---
+
+## Additional Actions
+
+### Assign Task
+
+```bash
+POST /api/tasks/123/assign_task/
+Content-Type: application/json
+
+{
+  "user_id": 5
+}
+```
+
+### Update Status
+
+```bash
+POST /api/tasks/123/update_status/
+Content-Type: application/json
+
+{
+  "status": "in_progress"
+}
+```
+
+### Add Comment
+
+```bash
+POST /api/tasks/123/add_comment/
+Content-Type: application/json
+
+{
+  "content": "This looks good! @john_doe please review",
+  "parent_comment": 456,  // Optional: for replies
+  "mention_usernames": ["john_doe"]
+}
+```
+
+### Upload Attachment
+
+```bash
+POST /api/tasks/123/upload_attachment/
+Content-Type: application/json
+
+{
+  "file_name": "screenshot.png",
+  "file_url": "https://storage.example.com/files/screenshot.png",
+  "file_size": 1024000,
+  "file_type": "image/png"
+}
+```
+
+### Duplicate Task
+
+```bash
+POST /api/tasks/123/duplicate/
+Content-Type: application/json
+
+{
+  "include_subtasks": true,
+  "include_attachments": true,
+  "include_comments": false,
+  "new_title": "Copy of Task"
+}
+```
+
+### Get Subtasks
+
+```bash
+GET /api/tasks/123/subtasks/
+```
+
+### Get Task Timeline
+
+```bash
+GET /api/tasks/123/timeline/
+```
+
+**Response:**
+```json
+[
+  {
+    "type": "comment",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "user": "john_doe",
+    "data": {...}
+  },
+  {
+    "type": "time_entry",
+    "timestamp": "2024-01-15T14:00:00Z",
+    "user": "jane_smith",
+    "data": {...}
+  }
+]
+```
+
+---
+
+## Error Handling
+
+All API errors follow this format:
+
+```json
+{
+  "error": "Validation error",
+  "detail": "Task does not exist",
+  "code": "not_found"
+}
+```
+
+**Common Status Codes:**
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request
+- `401` - Unauthorized
+- `403` - Forbidden
+- `404` - Not Found
+- `500` - Server Error
+
+---
+
+## Rate Limiting
+
+- 1000 requests per hour per user
+- 100 bulk operations per hour
+- Headers include rate limit info:
+  - `X-RateLimit-Limit`
+  - `X-RateLimit-Remaining`
+  - `X-RateLimit-Reset`
+
+---
+
+## Best Practices
+
+1. **Use bulk operations** for updating multiple tasks
+2. **Filter on the server** instead of client-side filtering
+3. **Cache template data** for faster task creation
+4. **Use pagination** for large result sets
+5. **Implement debouncing** for search queries
+6. **Handle rate limits** gracefully
+7. **Use webhooks** for real-time updates (if available)
+
+---
+
+## SDK Examples
+
+### Python
+
+```python
+import requests
+
+API_BASE = "https://api.collabspace.com/api"
+TOKEN = "your_jwt_token"
+headers = {"Authorization": f"Bearer {TOKEN}"}
+
+# List tasks
+response = requests.get(f"{API_BASE}/tasks/", headers=headers)
+tasks = response.json()
+
+# Create task
+data = {
+    "project": 123,
+    "title": "New Task",
+    "priority": "high"
+}
+response = requests.post(f"{API_BASE}/tasks/", json=data, headers=headers)
+
+# Bulk update
+bulk_data = {
+    "task_ids": [1, 2, 3],
+    "operation": "update_status",
+    "status": "done"
+}
+response = requests.post(
+    f"{API_BASE}/tasks/bulk_operations/",
+    json=bulk_data,
+    headers=headers
+)
+```
+
+### JavaScript
+
+```javascript
+const API_BASE = 'https://api.collabspace.com/api';
+const TOKEN = 'your_jwt_token';
+
+const headers = {
+  'Authorization': `Bearer ${TOKEN}`,
+  'Content-Type': 'application/json'
+};
+
+// List tasks
+const response = await fetch(`${API_BASE}/tasks/`, { headers });
+const tasks = await response.json();
+
+// Create task from template
+const templateResponse = await fetch(
+  `${API_BASE}/templates/123/instantiate/`,
+  {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      project_id: 456,
+      template_vars: {
+        issue_description: 'Login bug'
+      }
+    })
+  }
+);
+
+// Reorder task
+await fetch(`${API_BASE}/tasks/reorder/`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({
+    task_id: 123,
+    new_position: 5
+  })
+});
+```
+
+---
+
+## Support
+
+For questions or issues:
+- Email: api-support@collabspace.com
+- Documentation: https://docs.collabspace.com
+- GitHub: https://github.com/collabspace/api-docs
