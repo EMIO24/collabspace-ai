@@ -1,74 +1,49 @@
-from typing import List, Dict, Any, Optional
+# apps/ai_features/services/analytics_ai.py
+from typing import Dict, Any, List
+# Local imports
+from .gemini_service import GeminiService
+from ..utils import truncate_for_context
 
-# CollabSpace Placeholder Imports
-from .base_ai_service import User 
-from .gemini_service import GeminiService 
 
 class AnalyticsAIService:
-    def __init__(self, provider: str = 'gemini', user: Optional[User] = None):
-        self.user = user or User(id=999, email="default_ai_user@collabspace.com")
-        self.ai = GeminiService() if provider == 'gemini' else self._get_openai_service()
+    """Service class for all AI-powered project and team analytics functionalities."""
     
-    def _get_openai_service(self):
-        from .openai_service import OpenAIService
-        return OpenAIService()
+    FEATURE_TYPE = 'analytics_ai'
 
-    def forecast_completion(self, project_data_summary: str) -> str:
-        """Predict project completion date based on velocity, remaining tasks, and dependencies."""
-        prompt = f"""
-        Analyze the following project summary data and forecast the most likely project completion date.
-        Provide the forecasted date and a brief rationale (3 sentences max) based on the provided velocity and remaining tasks.
+    def __init__(self):
+        self.ai = GeminiService()
 
-        PROJECT SUMMARY DATA:\n\n{project_data_summary}
-        
-        Format the response as: "Forecasted Date: YYYY-MM-DD. Rationale: [Your rationale]."
-        """
-        return self.ai.generate_completion(prompt, user=self.user, max_output_tokens=300, temperature=0.1)
-        
-    def detect_burnout_risk(self, team_members_data: str) -> str:
-        """Detect team burnout indicators based on workload, hours logged, and velocity."""
-        prompt = f"""
-        Analyze the following team member data, focusing on workload metrics, recent changes in velocity, and reported hours.
-        Identify any team members or teams at high risk of burnout. Provide a prioritized list of 3-5 preventative actions.
+    def forecast_completion(self, user, project_data: str) -> str:
+        """Predict project completion date using Gemini Pro."""
+        data_context = truncate_for_context(project_data, max_tokens=16000)
+        prompt = f"Analyze the following project data (velocity, scope, remaining work) and predict the final completion date with a confidence score (High/Medium/Low). Data: {data_context}"
+        response = self.ai.generate_with_context(user, prompt, data_context, self.FEATURE_TYPE, use_pro=True, max_tokens=500)
+        return response.get('text', 'Failed to generate forecast.')
 
-        TEAM DATA:\n\n{team_members_data}
-        """
-        return self.ai.generate_completion(prompt, user=self.user, max_output_tokens=600, temperature=0.3)
-        
-    def analyze_velocity(self, project_data_summary: str) -> str:
-        """Analyze team velocity trends (e.g., increasing/decreasing, variance) and suggest optimizations."""
-        prompt = f"""
-        Analyze the team's velocity based on the following data summary. 
-        Identify the primary trend (e.g., stable, volatile, decreasing) and suggest 2 actionable optimizations to improve consistency or speed.
+    def detect_burnout_risk(self, user, team_data: str) -> str:
+        """Detect team burnout indicators and suggest mitigation."""
+        data_context = truncate_for_context(team_data, max_tokens=8000)
+        prompt = f"Analyze team data (overtime, vacation, task reassignment rate) and assess the risk of burnout. Provide a risk score (1-5) and 3 mitigation steps. Data: {data_context}"
+        response = self.ai.generate_with_context(user, prompt, data_context, self.FEATURE_TYPE, use_pro=True, max_tokens=800)
+        return response.get('text', 'Failed to detect burnout risk.')
 
-        PROJECT DATA:\n\n{project_data_summary}
-        """
-        return self.ai.generate_completion(prompt, user=self.user, max_output_tokens=500, temperature=0.3)
-        
-    def suggest_resource_allocation(self, workspace_data: str) -> str:
-        """Suggest optimal resource distribution based on current task load and skill set data."""
-        prompt = f"""
-        Based on the workspace task load and skill set data provided, suggest an optimal reallocation of team members or tasks.
-        Focus on balancing workload and matching skills to high-priority needs.
-        
-        Return your suggestion as 3-5 specific recommendations.
-        WORKSPACE DATA:\n\n{workspace_data}
-        """
-        return self.ai.generate_completion(prompt, user=self.user, max_output_tokens=700, temperature=0.4)
-        
-    def identify_bottlenecks(self, project_data_summary: str) -> str:
-        """Identify workflow bottlenecks (e.g., excessive QA time, dependency wait) and recommend a process change."""
-        prompt = f"""
-        Analyze the project's workflow using the following data. Identify the single most significant workflow bottleneck (e.g., a specific stage, a frequent dependency issue).
-        Recommend one high-impact process change to mitigate this bottleneck.
+    def analyze_velocity(self, user, sprint_data: str) -> str:
+        """Analyze team velocity trends and suggest improvements."""
+        data_context = truncate_for_context(sprint_data, max_tokens=8000)
+        prompt = f"Analyze the sprint data below to identify velocity trends, consistency, and potential areas for process improvement. Data: {data_context}"
+        response = self.ai.generate_with_context(user, prompt, data_context, self.FEATURE_TYPE, max_tokens=1000)
+        return response.get('text', 'Failed to analyze velocity.')
 
-        PROJECT DATA:\n\n{project_data_summary}
-        """
-        return self.ai.generate_completion(prompt, user=self.user, max_output_tokens=400, temperature=0.1)
+    def suggest_resource_allocation(self, user, workspace_data: str) -> str:
+        """Suggest optimal resource distribution based on current workload."""
+        data_context = truncate_for_context(workspace_data, max_tokens=16000)
+        prompt = f"Analyze workspace data (current task load, project priorities, member skills) and suggest optimal resource allocation changes. Data: {data_context}"
+        response = self.ai.generate_with_context(user, prompt, data_context, self.FEATURE_TYPE, use_pro=True, max_tokens=1500)
+        return response.get('text', 'Failed to suggest resource allocation.')
 
-If you'd like, I can provide a more in-depth look at how to implement the actual file handling and cleanup process in `MeetingAIService` using the `client.files` API for production safety, as this is critical for multimodal tasks.
-
-This video provides a tutorial on [How to moderate text with Google AI](https://www.youtube.com/watch?v=UGq8_Sivt4k), which is relevant to the safety and content moderation features discussed in the Gemini integration.
-
-
-http://googleusercontent.com/youtube_content/0
+    def identify_bottlenecks(self, user, workflow_data: str) -> str:
+        """Identify workflow bottlenecks (e.g., long review times, specific team members)."""
+        data_context = truncate_for_context(workflow_data, max_tokens=8000)
+        prompt = f"Analyze the workflow data (time in each status, transition rates) to identify the top 3 process bottlenecks and suggest concrete fixes. Data: {data_context}"
+        response = self.ai.generate_with_context(user, prompt, data_context, self.FEATURE_TYPE, use_pro=True, max_tokens=1000)
+        return response.get('text', 'Failed to identify bottlenecks.')

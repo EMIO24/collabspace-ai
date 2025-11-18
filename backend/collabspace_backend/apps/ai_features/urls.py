@@ -1,42 +1,52 @@
-# Mock imports for Django routing
-def path(route, view_func):
-    return f"/{route} -> {view_func.__name__}"
-def include(app_name):
-    return app_name
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import TaskAIView, MeetingAIView, AnalyticsAIView, AssistantView, AIUsageView, AITemplateViewSet
 
-from .views import TaskAIView, MeetingAIView, CodeAIView, AnalyticsAIView, AssistantView
+app_name = 'ai_features'
 
-# Initialize view instances (simplified for this mock file)
-task_views = TaskAIView()
-meeting_views = MeetingAIView()
-code_views = CodeAIView()
-analytics_views = AnalyticsAIView()
-assistant_views = AssistantView()
+# Initialize routers for ModelViewSets and GenericViewSets
+router = DefaultRouter()
+# Template ViewSet
+router.register('templates', AITemplateViewSet, basename='ai-template')
+# Generic ViewSets for bulk/custom actions
+router.register('tasks', TaskAIView, basename='ai-task')
+router.register('meetings', MeetingAIView, basename='ai-meeting')
+router.register('analytics', AnalyticsAIView, basename='ai-analytics')
+router.register('assistant', AssistantView, basename='ai-assistant')
+router.register('usage', AIUsageView, basename='ai-usage')
 
+
+# The urlpatterns use the standard DRF router output, plus custom routes for clarity
 urlpatterns = [
-    # --- Task AI Endpoints ---
-    path("tasks/summarize/", task_views.post_summarize),
-    path("tasks/auto-create/", task_views.post_autocreate),
-    path("tasks/breakdown/", task_views.post_breakdown),
-    path("tasks/estimate/", task_views.post_estimate),
-    path("tasks/priority/", task_views.post_priority),
+    # Router includes list/retrieve/create/update for AITemplateViewSet
+    path('', include(router.urls)),
     
-    # --- Meeting AI Endpoints ---
-    path("meetings/transcribe/", meeting_views.post_transcribe),
-    path("meetings/summarize/", meeting_views.post_summarize),
-    path("meetings/action-items/", meeting_views.post_action_items),
+    # Custom/Specific Task AI Routes (using GenericViewSet actions)
+    path('tasks/summarize/', TaskAIView.as_view({'post': 'summarize'}), name='task-summarize'),
+    path('tasks/auto-create/', TaskAIView.as_view({'post': 'auto_create'}), name='task-auto-create'),
+    path('tasks/breakdown/', TaskAIView.as_view({'post': 'breakdown'}), name='task-breakdown'),
+    path('tasks/estimate/', TaskAIView.as_view({'post': 'estimate'}), name='task-estimate'),
+    path('tasks/priority/', TaskAIView.as_view({'post': 'priority'}), name='task-priority'),
+    path('tasks/suggest-assignee/', TaskAIView.as_view({'post': 'suggest_assignee'}), name='task-suggest-assignee'),
     
-    # --- Code AI Endpoints ---
-    path("code/review/", code_views.post_review),
-    path("code/generate/", code_views.post_generate),
-    path("code/explain/", code_views.post_explain),
+    # Custom/Specific Meeting AI Routes
+    path('meetings/summarize/', MeetingAIView.as_view({'post': 'summarize'}), name='meeting-summarize'),
+    path('meetings/action-items/', MeetingAIView.as_view({'post': 'action_items'}), name='meeting-action-items'),
+    path('meetings/sentiment/', MeetingAIView.as_view({'post': 'sentiment'}), name='meeting-sentiment'),
     
-    # --- Analytics AI Endpoints ---
-    path("analytics/project-forecast/<str:id>/", analytics_views.get_project_forecast),
-    path("analytics/burnout-detection/", analytics_views.get_burnout_detection),
-    path("analytics/velocity/", analytics_views.get_velocity),
+    # Custom/Specific Analytics AI Routes (using path() for detail routes)
+    path('analytics/project-forecast/<uuid:pk>/', AnalyticsAIView.as_view({'get': 'project_forecast'}), name='analytics-project-forecast'),
+    path('analytics/burnout-detection/<uuid:pk>/', AnalyticsAIView.as_view({'get': 'burnout_detection'}), name='analytics-burnout-detection'),
+    path('analytics/velocity/<uuid:pk>/', AnalyticsAIView.as_view({'get': 'velocity'}), name='analytics-velocity'),
+    path('analytics/resource-optimizer/', AnalyticsAIView.as_view({'post': 'resource_optimizer'}), name='analytics-resource-optimizer'),
+    path('analytics/bottlenecks/<uuid:pk>/', AnalyticsAIView.as_view({'get': 'bottlenecks'}), name='analytics-bottlenecks'),
     
-    # --- Assistant AI Endpoints ---
-    path("assistant/chat/", assistant_views.post_chat),
-    path("assistant/search/", assistant_views.post_search),
+    # Custom/Specific Assistant Routes
+    path('assistant/chat/', AssistantView.as_view({'post': 'chat'}), name='assistant-chat'),
+    path('assistant/search/', AssistantView.as_view({'post': 'search'}), name='assistant-search'),
+    
+    # Custom/Specific Usage Routes
+    path('usage/', AIUsageView.as_view({'get': 'usage'}), name='usage-user'),
+    path('usage/workspace/<uuid:pk>/', AIUsageView.as_view({'get': 'workspace_usage'}), name='usage-workspace'),
+    path('usage/quota/', AIUsageView.as_view({'get': 'quota'}), name='usage-quota'),
 ]

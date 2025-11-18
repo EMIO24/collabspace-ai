@@ -1,84 +1,74 @@
 import time
-import logging
-from typing import Any, Dict, List, Optional
-from google import genai
-from google.genai.errors import ResourceExhausted, DeadlineExceeded, APIError
+import json
+from typing import Optional, Any
+from google.generativeai.errors import APIError
 
-# --- CollabSpace Placeholder Imports ---
-# Assuming these are defined elsewhere
-class User:
-    def __init__(self, id: int, email: str):
-        self.id = id
-        self.email = email
-class settings:
-    # Example settings - replace with actual config
-    GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
-    GEMINI_MODEL = "gemini-2.5-flash"
-    OPENAI_MODEL = "gpt-4-turbo"
-    ANTHROPIC_MODEL = "claude-3-sonnet"
-# ---------------------------------------
+# Local imports
+from ..models import AIUsage
+from ..utils import estimate_tokens, truncate_for_context, get_user_rate_limit
 
-# Import the new rate limit handler
-from .rate_limit_handler import RateLimitHandler 
-
-logger = logging.getLogger(__name__)
-
-# Basic public pricing for Gemini 2.5 Flash (as of the search results)
-# These values should be regularly checked and updated from Google's official pricing page.
-# Prices are per 1 Million tokens (Input/Output).
-GEMINI_FLASH_INPUT_PRICE_PER_M_TOKENS = 0.10  # USD
-GEMINI_FLASH_OUTPUT_PRICE_PER_M_TOKENS = 0.40 # USD
 
 class BaseAIService:
-    """Base class for AI service providers with core utility methods."""
+    """Base class for AI service providers, handling usage, limits, and errors."""
     
     def __init__(self):
         self.max_retries = 3
-        self.timeout = 30 # seconds
-        self.rate_limit_handler = RateLimitHandler()
+        self.timeout = 30  # seconds
+        # RateLimitHandler logic is merged into AIRateLimit model and checks
+        self.rate_limit_model = get_user_rate_limit 
+
+    def count_tokens(self, text: str) -> int:
+        """Estimate token count (approx 1 token per 4 chars)."""
+        return estimate_tokens(text)
+
+    def handle_rate_limit(self, user) -> bool:
+        """Check and enforce Gemini free tier rate limits (60 req/min)."""
+        rate_limit = self.rate_limit_model(user)
+        return rate_limit.can_make_request()
+
+    def track_usage(self, user, feature_type: str, model_used: str, success: bool, 
+                    prompt_tokens: int, completion_tokens: int, processing_time: float,
+                    request_data: Dict[str, Any], response_data: Dict[str, Any], 
+                    error_message: Optional[str] = None):
+        """Track AI usage for quota management."""
+        total_tokens = prompt_tokens + completion_tokens
         
-    def count_tokens(self, text: str, model: str) -> int:
-        """Count tokens in text (Placeholder, implemented in subclasses)."""
-        raise NotImplementedError("Subclasses must implement count_tokens")
-        
-    def handle_rate_limit(self, user: User) -> bool:
-        """Check and enforce rate limits for a user."""
-        user_key = f"user_{user.id}"
-        return self.rate_limit_handler.check_and_enforce(user_key)
-        
-    def track_usage(self, user: User, input_tokens: int, output_tokens: int, cost: float, model: str):
-        """Track AI usage for billing (Placeholder - log for now)."""
-        # In a real application, this would write to a database/billing service
-        total_tokens = input_tokens + output_tokens
-        logger.info(
-            f"USAGE: User {user.id} | Model: {model} | Input: {input_tokens} | Output: {output_tokens} | Total: {total_tokens} | Cost: ${cost:.6f}"
+        # 1. Log usage
+        usage_log = AIUsage.objects.create(
+            user=user,
+            feature_type=feature_type,
+            model_used=model_used,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            processing_time=processing_time,
+            request_data=truncate_for_context(json.dumps(request_data), max_tokens=1000),
+            response_data=truncate_for_context(json.dumps(response_data), max_tokens=1000),
+            success=success,
+            error_message=error_message,
         )
-        # TODO: Implement actual database tracking and cost attribution
-        
-    def handle_error(self, error: Exception, attempt: int) -> bool:
-        """
-        Handle API errors gracefully.
-        :return: True if the request should be retried, False otherwise.
-        """
-        if isinstance(error, ResourceExhausted):
-            logger.warning(f"Rate Limit Exceeded (429) on attempt {attempt}: {error}")
-            # Do not retry immediately; rely on internal rate limiter or raise
-            if attempt < self.max_retries:
-                 # Exponential backoff on API's 429
-                time.sleep(2 ** attempt)
-                return True
-            return False
-            
-        if isinstance(error, DeadlineExceeded):
-            logger.error(f"Timeout (504) on attempt {attempt}: {error}")
-            if attempt < self.max_retries:
-                time.sleep(1) # Small linear backoff for transient timeouts
-                return True
-            return False
-            
+
+        # 2. Increment rate limit (Signal handles this based on AIUsage post_save)
+        # The signal is set up in signals.py to avoid direct dependency here.
+        return usage_log
+
+    def handle_error(self, error: Exception, attempt: int) -> Optional[int]:
+        """Handle Gemini API errors gracefully, returning time to wait for retry."""
         if isinstance(error, APIError):
-            logger.error(f"Gemini API Error (non-retryable): {error}")
-            return False # Non-transient API errors are usually not worth retrying
+            error_message = str(error).lower()
             
-        logger.error(f"Unexpected Error on attempt {attempt}: {type(error).__name__}: {error}")
-        return False
+            # Rate Limit or Transient Error: Retry
+            if 'rate limit' in error_message or 'unavailable' in error_message or 'timeout' in error_message:
+                wait_time = 2 ** attempt  # Exponential backoff
+                print(f"Transient error ({error_message}). Retrying in {wait_time}s. Attempt {attempt}/{self.max_retries}")
+                return wait_time
+                
+            # Content Safety, Invalid Input: Do not retry
+            if 'safety' in error_message or 'invalid' in error_message or 'bad request' in error_message:
+                print(f"Non-retriable API error: {error_message}")
+                return None  # Do not retry
+
+        # All other errors: Retry with backoff
+        wait_time = 2 ** attempt
+        print(f"Generic error: {error}. Retrying in {wait_time}s. Attempt {attempt}/{self.max_retries}")
+        return wait_time

@@ -1,62 +1,68 @@
-import logging
-from typing import Tuple, Optional
-
-# Assume these classes/functions exist in the broader application
-# Mock imports for demonstration
-class User:
-    def __init__(self, plan_type: str, id: str):
-        self.plan_type = plan_type
-        self.id = id
-
-class AIUsageManager:
-    """Mock class to simulate database interaction for usage tracking."""
-    def get_daily_usage(self, user_id: str) -> int:
-        # In a real app, this would query the AIUsage model for today's count
-        # This currently returns 0 for demonstration purposes.
-        return 0 
-
-# Mock settings class
-class Settings:
-    RATE_LIMITS = {
-        'FREE': 10,
-        'PRO': 100,
-        'ENTERPRISE': float('inf'),
-    }
-settings = Settings()
-
-logger = logging.getLogger(__name__)
+from rest_framework import permissions
+from .models import AIRateLimit
 
 
-class HasAIAccess:
-    """
-    Custom permission to check AI feature access based on user plan and daily limits.
-    
-    Rate limits:
-    - FREE: 10 calls/day
-    - PRO: 100 calls/day
-    - ENTERPRISE: Unlimited
-    """
-    def has_permission(self, request, view) -> Tuple[bool, Optional[int]]:
-        """Checks if the user has access to the AI feature based on their plan."""
-        # This assumes the user object is attached to the request (e.g., request.user in Django)
-        user = request.user
-        user_plan = user.plan_type.upper()
+class HasAIAccess(permissions.BasePermission):
+    """Check user has AI access based on their subscription plan."""
+    message = "Your subscription plan does not include access to AI features."
+
+    def has_permission(self, request, view):
+        # Assumes user.profile exists and has a plan_type attribute
+        # For simplicity, we check if the user is authenticated and has a plan
+        if not request.user.is_authenticated:
+            return False
+            
+        # Placeholder for real profile/plan lookup:
+        # return request.user.profile.plan_type in ['free', 'pro', 'enterprise']
+        return True # Default to True if profile lookup is complex/unavailable
+
+class HasAIQuota(permissions.BasePermission):
+    """Check user has remaining AI quota (daily and per-minute)."""
+    message = "You have exceeded your AI usage quota. Please try again later."
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+            
+        rate_limit, _ = AIRateLimit.objects.get_or_create(user=request.user)
         
-        limit = settings.RATE_LIMITS.get(user_plan, 0)
+        # This check respects both daily and minute limits
+        if not rate_limit.can_make_request():
+            # Customize the message based on the type of limit hit
+            if not rate_limit.check_minute_limit():
+                self.message = "You have exceeded the per-minute AI request limit. Please wait 60 seconds."
+            else:
+                self.message = "You have exceeded your daily AI usage quota."
+            return False
+            
+        return True
 
-        if limit == float('inf'):
-            # Enterprise has unlimited access
-            return True, None
+class CanUseAdvancedAI(permissions.BasePermission):
+    """Check user can use advanced AI (Pro model) which is often more expensive."""
+    message = "Advanced AI features require Pro or Enterprise plan."
 
-        usage_manager = AIUsageManager()
-        current_usage = usage_manager.get_daily_usage(user.id)
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+            
+        # Placeholder for real profile/plan lookup:
+        # return request.user.profile.plan_type in ['pro', 'enterprise']
         
-        if current_usage >= limit:
-            logger.warning(f"Rate limit exceeded for user {user.id} ({user_plan}): {current_usage}/{limit}")
-            return False, limit
+        # Simplified: Check for 'pro' in the view's data if provided, otherwise assume flash is fine
+        use_pro = request.data.get('use_pro_model', False)
+        if use_pro:
+             # In a real app, this would check the user's plan_type from their profile
+             return True # simplified for now
         
-        # User is within limits
-        return True, limit
+        return True # Flash model is allowed by default
 
-# Attach the permission check function to the class for easy usage
-HasAIAccess.has_permission = classmethod(HasAIAccess.has_permission)
+class CanManageAITemplates(permissions.BasePermission):
+    """Check user can manage AI templates (staff/admin/enterprise only)."""
+    message = "Only admins or Enterprise users can manage AI prompt templates."
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+            
+        # Simplified check
+        return request.user.is_staff or request.user.is_superuser

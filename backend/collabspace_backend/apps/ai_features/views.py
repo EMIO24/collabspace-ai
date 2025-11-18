@@ -1,271 +1,242 @@
-import uuid
-import logging
-from typing import Dict, Any
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from google.generativeai.errors import APIError
 
-# Mock imports for Django/DRF context
-class APIView:
-    pass
-class Response:
-    def __init__(self, data, status=200):
-        self.data = data
-        self.status = status
-        
-def status_codes():
-    class Status:
-        HTTP_200_OK = 200
-        HTTP_201_CREATED = 201
-        HTTP_400_BAD_REQUEST = 400
-        HTTP_403_FORBIDDEN = 403
-        HTTP_404_NOT_FOUND = 404
-        HTTP_500_INTERNAL_SERVER_ERROR = 500
-    return Status()
-status = status_codes()
+# Local Imports
+from .permissions import HasAIAccess, HasAIQuota, CanUseAdvancedAI, CanManageAITemplates
+from .services.task_ai import TaskAIService
+from .services.meeting_ai import MeetingAIService
+from .services.analytics_ai import AnalyticsAIService
+from .services.gemini_service import GeminiService
+from .models import AIUsage, AIPromptTemplate, AIRateLimit, AICache
+from .serializers import * # Import all serializers
 
-# Local imports
-from .permissions import HasAIAccess
-from .tasks import summarize_document_task, code_review_task, analyze_project_forecast_task, transcribe_audio_task # NEW IMPORT
-from .tasks import GEMINI_PROVIDER
-from .serializers import (
-    SummarizeTaskInputSerializer, CodeInputSerializer, ChatInputSerializer,
-    AnalyticsJobCreated, ResponseSerializer, ChatResponse, ProjectForecastOutput,
-    MeetingTranscriptionInputSerializer # NEW IMPORT
-)
+# --- Mixin for AI Views ---
 
-class AIServiceFactory:
-    """Mock factory focused on providing a Gemini Chat service."""
-    @staticmethod
-    def get_chat_service(user):
-        class MockGeminiChatService:
-            def chat(self, session_id, message, history):
-                # Placeholder for synchronous chat call using the Gemini SDK
-                return {"response": f"Gemini responded to '{message[:20]}...' on {user.plan_type} plan.", "tool_used": None}
-        return MockGeminiChatService()
-
-logger = logging.getLogger(__name__)
-
-
-class BaseAIView(APIView):
-    """Base class to handle common logic like permission checking."""
+class AIViewMixin:
+    """Handles common AI error and permission responses."""
     
-    def dispatch(self, request, *args, **kwargs):
-        """Check rate limits before processing any request."""
-        # Mocking request.user for demonstration
-        class MockUser:
-            def __init__(self):
-                self.id = "mock-user-123"
-                self.plan_type = "PRO" 
-            
-        request.user = MockUser() 
+    permission_classes = [HasAIAccess, HasAIQuota]
+    
+    def handle_ai_call(self, service_method, serializer_class, *args, **kwargs):
+        """Standardizes request validation, service call, and error handling."""
         
-        has_access, limit = HasAIAccess.has_permission(request, self)
-        if not has_access:
-            return Response(
-                data=ResponseSerializer(
-                    success=False, 
-                    message=f"Daily AI usage limit ({limit}) exceeded for your plan.",
-                    data={"limit": limit}
-                ).model_dump(),
-                status=status.HTTP_403_FORBIDDEN
-            )
-        return super().dispatch(request, *args, **kwargs)
-
-    def validate_serializer(self, Serializer, data):
-        """Simple Pydantic-style validation wrapper."""
+        # 1. Validation
+        serializer = serializer_class(data=self.request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+        
+        user = self.request.user
+        
         try:
-            return Serializer(**data)
+            # 2. Service Call
+            result = service_method(user, **validated_data, *args, **kwargs)
+            return Response(result, status=status.HTTP_200_OK)
+            
+        except APIError as e:
+            # 3. API Error Handling (e.g., final failure after retries, safety block)
+            return Response({'error': 'AI_API_ERROR', 'message': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except Exception as e:
-            raise ValueError(f"Invalid input data: {e}")
+            # 4. General Server Error (e.g., internal service error, DB error)
+            return Response({'error': 'INTERNAL_ERROR', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class TaskAIView(BaseAIView):
-    """Endpoints for AI operations on documents and tasks."""
+# --- API Views ---
+
+class TaskAIView(AIViewMixin, viewsets.GenericViewSet):
+    """Endpoints for Task AI features (summarization, breakdown, etc.)."""
     
-    def post_summarize(self, request):
-        """POST /api/ai/tasks/summarize/"""
-        try:
-            validated_data = self.validate_serializer(SummarizeTaskInputSerializer, request.data)
-            job_id = str(uuid.uuid4())
-            
-            summarize_document_task.delay(
-                job_id, 
-                validated_data.content, 
-                request.user.id,
-                validated_data.length
-            )
-            
-            return Response(
-                data=AnalyticsJobCreated(
-                    success=True, 
-                    message="Summarization job started.", 
-                    data={"status": "pending", "job_id": job_id}
-                ).model_dump(), 
-                status=status.HTTP_201_CREATED
-            )
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def post_autocreate(self, request):
-        """POST /api/ai/tasks/auto-create/"""
-        return Response({"message": "Task auto-create job started."})
-
-    def post_breakdown(self, request):
-        """POST /api/ai/tasks/breakdown/"""
-        return Response({"message": "Task breakdown job started."})
-
-    def post_estimate(self, request):
-        """POST /api/ai/tasks/estimate/"""
-        return Response({"message": "Task estimation job started."})
-
-    def post_priority(self, request):
-        """POST /api/ai/tasks/priority/"""
-        return Response({"message": "Task priority job started."})
-
-
-class MeetingAIView(BaseAIView):
-    """Endpoints for AI operations on meetings and transcripts."""
+    service = TaskAIService()
     
-    def post_transcribe(self, request):
-        """POST /api/ai/meetings/transcribe/ - NOW IMPLEMENTED"""
-        try:
-            # Validate input data, requiring meeting_id and audio_file_path
-            validated_data = self.validate_serializer(MeetingTranscriptionInputSerializer, request.data)
-            job_id = str(uuid.uuid4())
+    @action(detail=False, methods=['post'], serializer_class=TaskAISummarizeSerializer)
+    def summarize(self, request):
+        return self.handle_ai_call(self.service.summarize_task, TaskAISummarizeSerializer)
+
+    @action(detail=False, methods=['post'], serializer_class=TaskAICreateSerializer)
+    def auto_create(self, request):
+        # NOTE: Task creation logic (saving to DB) must happen here after the AI call
+        def service_wrapper(user, text, workspace_id, project_id=None):
+            tasks = self.service.auto_create_from_text(user, text, use_pro=True)
+            # Placeholder: In a real app, this would call a Task model service to save the tasks
+            # tasks = TaskService.create_tasks(user, workspace_id, project_id, tasks)
+            return {'created_tasks': tasks}
             
-            # Delegate to the asynchronous transcription task
-            transcribe_audio_task.delay(
-                job_id, 
-                validated_data.meeting_id, 
-                validated_data.audio_file_path
-            )
-            
-            return Response(
-                data=AnalyticsJobCreated(
-                    success=True, 
-                    message="Transcription job started successfully.", 
-                    data={"status": "pending", "job_id": job_id}
-                ).model_dump(), 
-                status=status.HTTP_201_CREATED
-            )
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return self.handle_ai_call(service_wrapper, TaskAICreateSerializer)
 
-
-    def post_summarize(self, request):
-        """POST /api/ai/meetings/summarize/"""
-        return Response({"message": "Meeting summarization job started."})
-
-    def post_action_items(self, request):
-        """POST /api/ai/meetings/action-items/"""
-        return Response({"message": "Action item extraction job started."})
-
-
-class CodeAIView(BaseAIView):
-    """Endpoints for AI operations on code."""
-
-    def post_review(self, request):
-        """POST /api/ai/code/review/"""
-        try:
-            validated_data = self.validate_serializer(CodeInputSerializer, request.data)
-            job_id = str(uuid.uuid4())
-            
-            code_review_task.delay(
-                job_id, 
-                validated_data.code, 
-                request.user.id,
-                validated_data.file_path
-            )
-
-            return Response(
-                data=AnalyticsJobCreated(
-                    success=True, 
-                    message="Code review job started.", 
-                    data={"status": "pending", "job_id": job_id}
-                ).model_dump(), 
-                status=status.HTTP_201_CREATED
-            )
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def post_generate(self, request):
-        """POST /api/ai/code/generate/"""
-        return Response({"message": "Code generation job started."})
-
-    def post_explain(self, request):
-        """POST /api/ai/code/explain/"""
-        return Response({"message": "Code explanation job started."})
-
-
-class AnalyticsAIView(BaseAIView):
-    """Endpoints for project analytics using AI."""
-
-    def get_project_forecast(self, request, id: str):
-        """GET /api/ai/analytics/project-forecast/{id}/"""
+    @action(detail=False, methods=['post'], serializer_class=TaskAIBreakdownSerializer)
+    def breakdown(self, request):
+        # Assuming task_description is passed directly for simplicity, or fetched from task_id
+        task_description = request.data.get('task_description') or "Large epic task description." 
+        num_subtasks = request.data.get('num_subtasks')
+        auto_create = request.data.get('auto_create', False)
         
-        job_id = str(uuid.uuid4())
-        analyze_project_forecast_task.delay(job_id, id, request.user.id)
+        def service_wrapper(user):
+            # Pass use_pro based on user permission (if applicable)
+            subtasks = self.service.break_down_task(user, task_description, num_subtasks=num_subtasks, use_pro=CanUseAdvancedAI().has_permission(request, self))
+            if auto_create:
+                # Placeholder: Call SubTaskService.create_subtasks(task_id, subtasks)
+                pass 
+            return {'subtasks': subtasks}
+            
+        # Use a dummy serializer for simple validation since breakdown has complex logic
+        return self.handle_ai_call(service_wrapper, TaskAIBreakdownSerializer)
+        
+    @action(detail=False, methods=['post'], serializer_class=TaskAIEstimateSerializer)
+    def estimate(self, request):
+        return self.handle_ai_call(self.service.estimate_effort, TaskAIEstimateSerializer)
+        
+    @action(detail=False, methods=['post'], serializer_class=TaskAIPrioritySerializer)
+    def priority(self, request):
+        return self.handle_ai_call(self.service.suggest_priority, TaskAIPrioritySerializer)
 
-        if id == "sample-ready":
-             return Response(
-                data=ProjectForecastOutput(
-                    success=True, 
-                    message="Forecast complete.", 
-                    data={
-                        "completion_date": "2024-12-31", 
-                        "confidence_level": 0.88, 
-                        "risk_factors": ["Resource bottleneck in Q4", "External dependency delay"]
-                    }
-                ).model_dump(),
-                status=status.HTTP_200_OK
-            )
-
-        return Response(
-            data=AnalyticsJobCreated(
-                success=True, 
-                message=f"Project forecast job started for project {id}.", 
-                data={"status": "pending", "job_id": job_id}
-            ).model_dump(), 
-            status=status.HTTP_201_CREATED
-        )
-
-    def get_burnout_detection(self, request):
-        """GET /api/ai/analytics/burnout-detection/"""
-        return Response({"message": "Burnout detection job started."})
-
-    def get_velocity(self, request):
-        """GET /api/ai/analytics/velocity/"""
-        return Response({"message": "Velocity analysis job started."})
+    @action(detail=False, methods=['post'], serializer_class=TaskAIAssigneeSerializer)
+    def suggest_assignee(self, request):
+        return self.handle_ai_call(self.service.suggest_assignee, TaskAIAssigneeSerializer)
 
 
-class AssistantView(BaseAIView):
-    """Endpoints for the conversational AI assistant."""
+class MeetingAIView(AIViewMixin, viewsets.GenericViewSet):
+    """Endpoints for Meeting AI features (summarization, action items, sentiment)."""
     
-    def post_chat(self, request):
-        """POST /api/ai/assistant/chat/"""
-        try:
-            validated_data = self.validate_serializer(ChatInputSerializer, request.data)
+    service = MeetingAIService()
+    
+    @action(detail=False, methods=['post'], serializer_class=MeetingTranscribeSerializer)
+    def summarize(self, request):
+        # Use Pro model for better summarization
+        def service_wrapper(user, transcript, **kwargs):
+            return self.service.summarize_meeting(user, transcript)
             
-            service = AIServiceFactory.get_chat_service(request.user)
-            result = service.chat(
-                validated_data.session_id, 
-                validated_data.message, 
-                validated_data.history
-            )
-            
-            return Response(
-                data=ChatResponse(
-                    success=True, 
-                    message="Chat response generated.", 
-                    data={
-                        "response": result['response'], 
-                        "tool_used": result.get('tool_used')
-                    }
-                ).model_dump(),
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            logger.error(f"Chat failed: {e}")
-            return Response({"error": "Failed to get chat response."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return self.handle_ai_call(service_wrapper, MeetingTranscribeSerializer)
 
-    def post_search(self, request):
-        """POST /api/ai/assistant/search/"""
-        return Response({"message": "Assistant search initiated."})
+    @action(detail=False, methods=['post'], serializer_class=MeetingTranscribeSerializer)
+    def action_items(self, request):
+        def service_wrapper(user, transcript, auto_create_tasks=False, project_id=None):
+            items = self.service.extract_action_items(user, transcript, use_pro=CanUseAdvancedAI().has_permission(request, self))
+            if auto_create_tasks:
+                # Placeholder: TaskService.create_tasks_from_action_items(project_id, items)
+                pass
+            return {'action_items': items}
+            
+        return self.handle_ai_call(service_wrapper, MeetingTranscribeSerializer)
+
+    @action(detail=False, methods=['post'], serializer_class=MeetingTranscribeSerializer)
+    def sentiment(self, request):
+        def service_wrapper(user, transcript, **kwargs):
+            return self.service.analyze_sentiment(user, transcript)
+            
+        return self.handle_ai_call(service_wrapper, MeetingTranscribeSerializer)
+
+
+class AnalyticsAIView(AIViewMixin, viewsets.GenericViewSet):
+    """Endpoints for Analytics AI features (forecasting, optimization, etc.)."""
+    
+    service = AnalyticsAIService()
+    permission_classes = [HasAIAccess, HasAIQuota, CanUseAdvancedAI] # Analytics usually requires Pro
+
+    def _get_dummy_project_data(self, project_id):
+        # In a real app, this would query Task, Sprint, and Team models.
+        return f"Project ID {project_id} data: Velocity=20, Scope=300 points, Team=5, Risk=Medium."
+    
+    @action(detail=True, methods=['get'])
+    def project_forecast(self, request, pk=None):
+        project_data = self._get_dummy_project_data(pk)
+        return self.handle_ai_call(self.service.forecast_completion, AnalyticsForecastSerializer, project_data=project_data)
+
+    @action(detail=True, methods=['get'])
+    def burnout_detection(self, request, pk=None):
+        team_data = self._get_dummy_project_data(pk)
+        return self.handle_ai_call(self.service.detect_burnout_risk, AnalyticsForecastSerializer, team_data=team_data)
+
+    @action(detail=True, methods=['get'])
+    def velocity(self, request, pk=None):
+        sprint_data = self._get_dummy_project_data(pk)
+        return self.handle_ai_call(self.service.analyze_velocity, AnalyticsForecastSerializer, sprint_data=sprint_data, use_pro=False)
+
+    @action(detail=False, methods=['post'])
+    def resource_optimizer(self, request):
+        workspace_data = self._get_dummy_project_data(request.data.get('workspace_id', 'dummy'))
+        return self.handle_ai_call(self.service.suggest_resource_allocation, AnalyticsForecastSerializer, workspace_data=workspace_data)
+
+    @action(detail=True, methods=['get'])
+    def bottlenecks(self, request, pk=None):
+        workflow_data = self._get_dummy_project_data(pk)
+        return self.handle_ai_call(self.service.identify_bottlenecks, AnalyticsForecastSerializer, workflow_data=workflow_data)
+
+
+class AssistantView(AIViewMixin, viewsets.GenericViewSet):
+    """Endpoints for general AI assistant/chat functionality."""
+    
+    service = GeminiService() # Use the base service directly for chat
+    
+    @action(detail=False, methods=['post'], serializer_class=AssistantChatSerializer)
+    def chat(self, request):
+        # The serializer handles validation
+        validated_data = AssistantChatSerializer(data=request.data).is_valid(raise_exception=True)
+        
+        message = validated_data.get('message')
+        history = validated_data.get('conversation_history', [])
+        use_pro = validated_data.get('use_pro_model', False)
+        
+        # Format the new message and history for the chat API
+        messages = history + [{'role': 'user', 'text': message}]
+        
+        # NOTE: This API is complex and uses raw service method directly
+        try:
+            response = self.service.generate_chat(request.user, messages, 'assistant_chat', use_pro=use_pro)
+            return Response({'response': response.get('text'), 'tokens': response.get('total_tokens')})
+        except APIError as e:
+            return Response({'error': 'CHAT_API_ERROR', 'message': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    @action(detail=False, methods=['post'])
+    def search(self, request):
+        # This requires Gemini embeddings, a separate service, or context
+        return Response({'message': 'Semantic search feature placeholder.'})
+
+class AIUsageView(viewsets.GenericViewSet):
+    """Endpoints for tracking and displaying AI usage statistics."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @action(detail=False, methods=['get'])
+    def usage(self, request):
+        """Get current user's AI usage logs."""
+        logs = AIUsage.objects.filter(user=request.user).order_by('-created_at')[:50]
+        return Response(AIUsageSerializer(logs, many=True).data)
+
+    @action(detail=True, methods=['get'])
+    def workspace_usage(self, request, pk=None):
+        """Get workspace AI usage (admin only)."""
+        # Placeholder: Check if user is admin of workspace PK
+        # logs = AIUsage.objects.filter(workspace_id=pk).order_by('-created_at')[:50]
+        return Response({'message': 'Workspace usage feature placeholder.'})
+
+    @action(detail=False, methods=['get'])
+    def quota(self, request):
+        """Check remaining quota (daily and per-minute)."""
+        rate_limit, _ = AIRateLimit.objects.get_or_create(user=request.user)
+        return Response(AIRateLimitSerializer(rate_limit).data)
+
+
+class AITemplateViewSet(viewsets.ModelViewSet):
+    """CRUD for AI Prompt Templates (admin only)."""
+    
+    queryset = AIPromptTemplate.objects.all()
+    serializer_class = AIPromptTemplateSerializer
+    permission_classes = [CanManageAITemplates]
+    
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+        
+    @action(detail=True, methods=['post'])
+    def test(self, request, pk=None):
+        """Test template with sample data."""
+        template = self.get_object()
+        sample_data = request.data.get('sample_data', {})
+        
+        # Basic variable substitution
+        prompt = template.prompt_template
+        for key, value in sample_data.items():
+            prompt = prompt.replace(f'{{{{{key}}}}}', str(value))
+            
+        return Response({'test_prompt': prompt, 'variables': template.variables})

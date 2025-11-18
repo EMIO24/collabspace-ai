@@ -1,89 +1,104 @@
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
+import uuid
+from rest_framework import serializers
+from .models import AIUsage, AIPromptTemplate, AIRateLimit
+from ..utils import estimate_tokens # Use local utility
 
-# --- Base Serializers ---
 
-class ResponseSerializer(BaseModel):
-    """Base class for all successful JSON responses."""
-    success: bool = Field(True, description="Indicates if the operation was successful.")
-    message: str = Field(..., description="A short status message.")
-    data: Any = Field(None, description="The payload containing the result of the AI operation.")
+# --- Model Serializers ---
 
-# --- Task AI Serializers ---
+class AIUsageSerializer(serializers.ModelSerializer):
+    """Serializer for the AIUsage model."""
+    estimated_cost = serializers.SerializerMethodField()
 
-class TaskInputSerializer(BaseModel):
-    """Base input for Task AI operations."""
-    content: str = Field(..., description="The text or document content to process.")
-    context_id: Optional[str] = Field(None, description="ID of the project or document context.")
+    class Meta:
+        model = AIUsage
+        fields = '__all__'
+
+    def get_estimated_cost(self, obj):
+        return obj.estimate_cost()
+
+class AIPromptTemplateSerializer(serializers.ModelSerializer):
+    """Serializer for the AIPromptTemplate model."""
+    class Meta:
+        model = AIPromptTemplate
+        fields = '__all__'
+        read_only_fields = ['created_by']
+
+class AIRateLimitSerializer(serializers.ModelSerializer):
+    """Serializer for the AIRateLimit model, showing quota status."""
+    can_make_request = serializers.SerializerMethodField()
+    requests_remaining_today = serializers.SerializerMethodField()
+    requests_remaining_minute = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AIRateLimit
+        fields = ('user', 'plan_type', 'daily_limit', 'requests_today', 'tokens_today', 
+                  'minute_limit', 'requests_this_minute', 'can_make_request', 
+                  'requests_remaining_today', 'requests_remaining_minute')
+
+    def get_can_make_request(self, obj):
+        return obj.can_make_request()
+
+    def get_requests_remaining_today(self, obj):
+        # We must call reset_if_needed implicitly to ensure accurate counts
+        obj.reset_if_needed()
+        return max(0, obj.daily_limit - obj.requests_today)
+
+    def get_requests_remaining_minute(self, obj):
+        obj.reset_if_needed()
+        return max(0, obj.minute_limit - obj.requests_this_minute)
+
+
+# --- Input Serializers (API Validation) ---
+
+class TaskAISummarizeSerializer(serializers.Serializer):
+    task_description = serializers.CharField(max_length=5000)
+
+class TaskAICreateSerializer(serializers.Serializer):
+    text = serializers.CharField(max_length=10000)
+    workspace_id = serializers.UUIDField()
+    project_id = serializers.UUIDField(required=False)
+
+class TaskAIBreakdownSerializer(serializers.Serializer):
+    task_id = serializers.UUIDField(required=False)
+    task_description = serializers.CharField(max_length=5000, required=False)
+    num_subtasks = serializers.IntegerField(default=5, min_value=2, max_value=10)
+    auto_create = serializers.BooleanField(default=False)
+
+class TaskAIEstimateSerializer(serializers.Serializer):
+    task_description = serializers.CharField(max_length=5000)
+    project_context = serializers.CharField(max_length=5000, required=False)
+
+class TaskAIPrioritySerializer(serializers.Serializer):
+    task_description = serializers.CharField(max_length=5000)
+    due_date = serializers.CharField(max_length=255, required=False)
+
+class TaskAIAssigneeSerializer(serializers.Serializer):
+    task_id = serializers.UUIDField(required=False)
+    task_description = serializers.CharField(max_length=5000, required=False)
+    team_members = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=1
+    )
+
+class MeetingTranscribeSerializer(serializers.Serializer):
+    transcript = serializers.CharField(max_length=50000)
+    auto_create_tasks = serializers.BooleanField(default=False)
+    project_id = serializers.UUIDField(required=False)
     
-class SummarizeTaskInputSerializer(TaskInputSerializer):
-    length: str = Field("medium", description="Desired length of summary (short, medium, long).")
-
-class BreakdownOutputSerializer(BaseModel):
-    subtasks: List[Dict[str, Any]] = Field(..., description="A list of generated subtasks with details.")
-
-class BreakdownTaskOutputSerializer(ResponseSerializer):
-    data: BreakdownOutputSerializer
-
-# --- Meeting AI Serializers ---
-
-class MeetingInputSerializer(BaseModel):
-    """Base input for Meeting AI operations."""
-    meeting_id: str = Field(..., description="The ID of the meeting record.")
-
-class MeetingTranscriptionInputSerializer(MeetingInputSerializer):
-    audio_file_path: str = Field(..., description="Local path or URL to the audio file.")
-
-class MeetingSummaryOutputSerializer(BaseModel):
-    summary: str
-    action_items: List[str]
-    attendees: List[str]
-
-class MeetingSummaryOutput(ResponseSerializer):
-    data: MeetingSummaryOutputSerializer
-
-# --- Code AI Serializers ---
-
-class CodeInputSerializer(BaseModel):
-    file_path: str = Field(..., description="The name or path of the file being processed.")
-    code: str = Field(..., description="The code content to review, explain, or generate from.")
-
-class CodeReviewOutputSerializer(BaseModel):
-    rating: int = Field(..., description="A score from 1-10 on code quality.")
-    feedback: List[Dict[str, str]] = Field(..., description="List of structured suggestions (line_no, comment).")
-
-class CodeReviewOutput(ResponseSerializer):
-    data: CodeReviewOutputSerializer
-
-# --- Analytics AI Serializers ---
-
-class AnalyticsOutputSerializer(BaseModel):
-    """Base output for long-running analytics."""
-    status: str = Field(..., description="Status of the analysis job (pending, running, complete).")
-    job_id: str = Field(..., description="ID of the Celery job for tracking.")
-
-class AnalyticsJobCreated(ResponseSerializer):
-    data: AnalyticsOutputSerializer
-
-class ProjectForecastData(BaseModel):
-    completion_date: str = Field(..., description="Forecasted date of project completion.")
-    confidence_level: float = Field(..., description="Confidence level (0.0 to 1.0) of the forecast.")
-    risk_factors: List[str]
-
-class ProjectForecastOutput(ResponseSerializer):
-    data: ProjectForecastData
-
-# --- Assistant AI Serializers ---
-
-class ChatInputSerializer(BaseModel):
-    """Input for the conversational assistant."""
-    session_id: str = Field(..., description="ID of the ongoing chat session.")
-    message: str = Field(..., description="The new user message.")
-    history: List[Dict[str, str]] = Field(default_factory=list, description="Recent message history.")
-
-class ChatOutputSerializer(BaseModel):
-    response: str = Field(..., description="The AI's text response.")
-    tool_used: Optional[str] = Field(None, description="The name of any tool/function the AI used.")
-
-class ChatResponse(ResponseSerializer):
-    data: ChatOutputSerializer
+class AnalyticsForecastSerializer(serializers.Serializer):
+    project_id = serializers.UUIDField()
+    confidence_level = serializers.ChoiceField(
+        choices=['low', 'medium', 'high'],
+        default='medium'
+    )
+    
+class AssistantChatSerializer(serializers.Serializer):
+    message = serializers.CharField(max_length=2000)
+    context = serializers.JSONField(required=False)
+    conversation_history = serializers.ListField(
+        child=serializers.JSONField(),
+        required=False
+    )
+    # This is validated by permissions.CanUseAdvancedAI in the view
+    use_pro_model = serializers.BooleanField(default=False)
