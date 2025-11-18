@@ -408,14 +408,17 @@ if USE_S3:
 
 
 # ==============================================================================
-# OPENAI API CONFIGURATION
+# GEMINI AI API CONFIGURATION
 # ==============================================================================
 
 OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
 OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4')
 OPENAI_MAX_TOKENS = config('OPENAI_MAX_TOKENS', default=2000, cast=int)
 
-
+GEMINI_API_KEY = "AIza..." 
+GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_EMBEDDING_MODEL = "text-embedding-004"
+FALLBACK_RESPONSE = "I'm sorry, the AI service is currently unavailable. Please try again shortly."
 # ==============================================================================
 # ANTHROPIC (CLAUDE) API CONFIGURATION
 # ==============================================================================
