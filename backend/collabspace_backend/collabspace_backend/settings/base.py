@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
+import cloudinary
+from environ import Env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -569,3 +571,37 @@ WORKSPACE_ROLES = {
     'member': 50,
     'guest': 25,
 }
+
+
+
+env = Env()
+Env.read_env() # reads .env file
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': env('CLOUDINARY_API_KEY'),
+    'API_SECRET': env('CLOUDINARY_API_SECRET')
+}
+
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+    api_key=CLOUDINARY_STORAGE['API_KEY'],
+    api_secret=CLOUDINARY_STORAGE['API_SECRET'],
+    secure=True
+)
+
+# File upload limits
+FILE_UPLOAD_MAX_SIZE = 10485760  # 10MB (Cloudinary free tier is 25GB, but individual file upload limit might be lower or custom)
+ALLOWED_FILE_TYPES = [
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'application/pdf', 'text/plain', 'text/csv',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/zip', 'application/x-rar-compressed',
+    'video/mp4', 'video/webm', 'video/ogg',
+    'audio/mpeg', 'audio/ogg', 'audio/wav'
+]
+
+# If you want to use Cloudinary as default storage for all Django files
+# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'

@@ -1,76 +1,113 @@
+import uuid
 from django.db import models
 from django.conf import settings
-from uuid import uuid4
-
-# Placeholder base models (Assume these are defined in a core app or similar)
-class BaseModel(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    class Meta:
-        abstract = True
-
-class TimeStampedModel(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    class Meta:
-        abstract = True
-        
-# Get User model based on settings
-User = settings.AUTH_USER_MODEL
+from apps.core.models import BaseModel # Assuming this is available
 
 class File(BaseModel):
     """File metadata"""
-    # Assuming 'Workspace' model is defined elsewhere
-    workspace = models.ForeignKey('workspaces.Workspace', on_delete=models.CASCADE) 
-    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='uploaded_files')
+    workspace = models.ForeignKey('workspaces.Workspace', on_delete=models.CASCADE, related_name='files')
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='uploaded_files')
     file_name = models.CharField(max_length=255)
     file_size = models.BigIntegerField()  # bytes
     file_type = models.CharField(max_length=100)  # MIME type
-    s3_key = models.CharField(max_length=1024, unique=True) # S3 object key
-    s3_url = models.URLField(max_length=512) # Signed or public URL
-    thumbnail_url = models.URLField(max_length=512, null=True, blank=True)
-    
-    # Generic relationship fields
-    RELATED_TO_CHOICES = (
-        ('task', 'Task'),
-        ('project', 'Project'),
-        ('message', 'Message'),
-    )
-    related_to_type = models.CharField(max_length=50, choices=RELATED_TO_CHOICES, null=True, blank=True)
+    cloudinary_public_id = models.CharField(max_length=255, unique=True)
+    cloudinary_url = models.URLField()
+    thumbnail_url = models.URLField(null=True, blank=True)
+
+    # Generic relation to attach to any model
+    related_to_type = models.CharField(max_length=50, null=True, blank=True)  # task, project, message
     related_to_id = models.UUIDField(null=True, blank=True)
-    
+
     is_public = models.BooleanField(default=False)
     download_count = models.IntegerField(default=0)
-    
+
+    # Metadata
+    width = models.IntegerField(null=True, blank=True)  # for images
+    height = models.IntegerField(null=True, blank=True)  # for images
+    duration = models.FloatField(null=True, blank=True)  # for videos/audio
+
     class Meta:
+        db_table = 'files'
+        indexes = [
+            models.Index(fields=['workspace', 'uploaded_by']),
+            models.Index(fields=['related_to_type', 'related_to_id']),
+        ]
         ordering = ['-created_at']
-        
+
     def __str__(self):
         return self.file_name
 
-class FileVersion(TimeStampedModel):
+    def increment_download_count(self):
+        self.download_count += 1
+        self.save(update_fields=['download_count'])
+
+    def delete_from_cloudinary(self):
+        """Delete file from Cloudinary"""
+        import cloudinary.uploader
+        
+        # Helper to determine resource_type based on MIME type
+        def _get_resource_type(file_type):
+            if file_type.startswith('image/'):
+                return 'image'
+            elif file_type.startswith('video/') or file_type.startswith('audio/'):
+                return 'video'
+            else:
+                return 'raw'
+
+        resource_type = _get_resource_type(self.file_type)
+        try:
+            cloudinary.uploader.destroy(self.cloudinary_public_id, resource_type=resource_type)
+        except Exception as e:
+            # In a real app, use proper logging
+            print(f"Error deleting from Cloudinary: {e}")
+
+class FileVersion(models.Model):
     """File version history"""
     file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='versions')
     version_number = models.IntegerField()
-    s3_key = models.CharField(max_length=1024)
+    cloudinary_public_id = models.CharField(max_length=255)
+    cloudinary_url = models.URLField()
     file_size = models.BigIntegerField()
-    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     change_description = models.TextField(blank=True)
-    
-    class Meta:
-        unique_together = ('file', 'version_number')
-        ordering = ['-version_number']
+    created_at = models.DateTimeField(auto_now_add=True)
 
-class SharedLink(TimeStampedModel):
-    """Public file sharing"""
+    class Meta:
+        db_table = 'file_versions'
+        ordering = ['-version_number']
+        unique_together = ['file', 'version_number']
+
+    def __str__(self):
+        return f"{self.file.file_name} v{self.version_number}"
+
+class SharedLink(models.Model):
+    """Public file sharing links"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='shared_links')
-    token = models.CharField(max_length=64, unique=True, default=lambda: uuid4().hex)
+    token = models.CharField(max_length=64, unique=True, db_index=True)
     expires_at = models.DateTimeField(null=True, blank=True)
-    password = models.CharField(max_length=128, null=True, blank=True)
+    password = models.CharField(max_length=128, null=True, blank=True)  # Hashed password
     max_downloads = models.IntegerField(null=True, blank=True)
     download_count = models.IntegerField(default=0)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
-    
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'shared_links'
+
     def __str__(self):
-        return f"Link for {self.file.file_name} (Token: {self.token[:8]}...)"
+        return f"Share link for {self.file.file_name}"
+
+    def is_valid(self):
+        from django.utils import timezone
+        # Check expiration
+        if self.expires_at and self.expires_at < timezone.now():
+            return False
+        # Check download limit
+        if self.max_downloads and self.download_count >= self.max_downloads:
+            return False
+        return True
+
+    def increment_download(self):
+        self.download_count += 1
+        self.save(update_fields=['download_count'])
