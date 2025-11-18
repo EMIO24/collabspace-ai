@@ -1,63 +1,50 @@
+from channels.auth import AuthMiddlewareStack
 from channels.db import database_sync_to_async
-from django.contrib.auth.models import AnonymousUser
-from django.db import close_old_connections
 from rest_framework_simplejwt.tokens import AccessToken
+from django.contrib.auth.models import AnonymousUser
 from urllib.parse import parse_qs
 from django.conf import settings
-
-# Load the custom User model
-try:
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-except Exception:
-    # Fallback to a reference if get_user_model fails
-    User = settings.AUTH_USER_MODEL 
+from apps.authentication.models import User # Assuming User model location
 
 
 class JWTAuthMiddleware:
-    """
-    Custom middleware to authenticate users using a JWT token passed
-    in the WebSocket connection's query parameters.
-    """
-    
+    """Custom JWT auth for WebSocket"""
+
     def __init__(self, app):
         self.app = app
-    
+
     async def __call__(self, scope, receive, send):
-        # Close old database connections to prevent going stale
-        close_old_connections()
-        
-        # 1. Extract token from query params
-        try:
-            query_string = scope['query_string'].decode()
-            params = parse_qs(query_string)
-            token = params.get('token', [None])[0]
-        except Exception:
-            token = None
-        
-        # 2. Validate token and set user on the scope
+        # Get token from query params
+        query_string = scope.get('query_string', b'').decode()
+        params = parse_qs(query_string)
+        # Check for token in 'token' or 'access_token' query parameter
+        token = params.get('token', params.get('access_token', [None]))[0]
+
+        # Validate token and get user
         scope['user'] = await self.get_user_from_token(token)
-        
-        # 3. Delegate to the next layer
+
+        # Check if the user is authenticated (not AnonymousUser) before proceeding
+        # This allows AuthMiddlewareStack to do its work but ensures our custom auth runs first
         return await self.app(scope, receive, send)
-    
+
     @database_sync_to_async
     def get_user_from_token(self, token):
-        """
-        Attempts to authenticate the user based on the provided JWT.
-        """
         if not token:
             return AnonymousUser()
-            
+
         try:
-            # 1. Decode and validate the token
+            # Token validation and user retrieval
             access_token = AccessToken(token)
             user_id = access_token['user_id']
-            
-            # 2. Fetch the user from the database
+            # Using select_related for common profile info if available
             return User.objects.get(id=user_id)
-            
         except Exception as e:
-            # Token invalid, expired, or user not found
-            print(f"JWT Authentication failed: {e}")
+            # print(f"JWT Auth Error: {e}")
             return AnonymousUser()
+
+def JWTAuthMiddlewareStack(inner):
+    """
+    Combines our custom JWT auth with Django's default AuthMiddlewareStack
+    to provide an authenticated user object in the scope.
+    """
+    return JWTAuthMiddleware(AuthMiddlewareStack(inner))

@@ -1,380 +1,444 @@
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from channels.db import database_sync_to_async
 import json
 import re
-from channels.generic.websocket import AsyncJsonWebsocketConsumer
-from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.utils import timezone
-from .models import Channel, ChannelMember, Message, Workspace
-
-# User model reference from settings
-User = settings.AUTH_USER_MODEL 
+from apps.authentication.models import User
+from .models import Channel, ChannelMember, Message, MessageReaction
 
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
-    """
-    Handles WebSocket connections for real-time messaging within a specific workspace.
-    Manages presence, messages, typing indicators, and read receipts.
-    """
-    
+    """WebSocket consumer for real-time messaging"""
+
     async def connect(self):
-        """Handle WebSocket connection and authentication."""
-        self.user = self.scope["user"]
-        # The workspace_id is captured by the routing URL pattern
+        """Handle WebSocket connection"""
         self.workspace_id = self.scope['url_route']['kwargs']['workspace_id']
         self.workspace_group_name = f'workspace_{self.workspace_id}'
+        self.user = self.scope['user']
 
-        if not self.user.is_authenticated:
-            # The JWTAuthMiddleware should handle non-auth, but we ensure closure
-            await self.close()
+        # Verify user is authenticated and is a workspace member
+        if not self.user.is_authenticated or not await self.is_workspace_member():
+            await self.close(code=4001) # Unauthorized/Forbidden
             return
-        
-        # 1. Accept connection
-        await self.accept()
 
-        # 2. Join the dedicated workspace group (for presence updates)
+        # Join the global workspace group (for user status/global notifications)
         await self.channel_layer.group_add(
             self.workspace_group_name,
             self.channel_name
         )
-        
-        # 3. Broadcast online status to the workspace room
+
+        await self.accept()
+
+        # Send online status to workspace room
         await self.channel_layer.group_send(
             self.workspace_group_name,
             {
-                'type': 'user.online',
+                'type': 'user_online',
                 'user_id': str(self.user.id),
                 'username': self.user.username,
             }
         )
-        
-        # 4. Join all channel groups the user is a member of in this workspace
-        user_channel_groups = await self.get_user_channel_groups(self.user, self.workspace_id)
-        for group_name in user_channel_groups:
-            await self.channel_layer.group_add(group_name, self.channel_name)
 
     async def disconnect(self, close_code):
-        """Handle disconnection."""
-        
-        # 1. Send offline status
-        await self.channel_layer.group_send(
-            self.workspace_group_name,
-            {
-                'type': 'user.offline',
-                'user_id': str(self.user.id),
-                'username': self.user.username,
-            }
-        )
-        
-        # 2. Leave the workspace room
-        await self.channel_layer.group_discard(
-            self.workspace_group_name,
-            self.channel_name
-        )
-        
-        # 3. Leave all joined channel groups
-        user_channel_groups = await self.get_user_channel_groups(self.user, self.workspace_id)
-        for group_name in user_channel_groups:
-            await self.channel_layer.group_discard(group_name, self.channel_name)
+        """Handle WebSocket disconnection"""
+        if self.user.is_authenticated:
+            # Send offline status to workspace room
+            await self.channel_layer.group_send(
+                self.workspace_group_name,
+                {
+                    'type': 'user_offline',
+                    'user_id': str(self.user.id),
+                }
+            )
 
+            # Leave the global workspace group
+            await self.channel_layer.group_discard(
+                self.workspace_group_name,
+                self.channel_name
+            )
+        # Close connection if not already closed
+        # The base consumer handles the close, this is for cleanup.
 
-    # == WebSocket Receive Handler ==
     async def receive_json(self, content):
-        """Handle incoming WebSocket messages."""
-        message_type = content.get('type')
-        
-        if not message_type:
-            await self.send_json({'error': 'Missing message type'})
+        """Handle incoming JSON messages from WebSocket"""
+        command = content.get('command')
+        data = content.get('data', {})
+
+        try:
+            if not self.user.is_authenticated:
+                await self.send_json({'type': 'error', 'message': 'Authentication required.'})
+                return
+
+            if command == 'join_channel':
+                await self.handle_join_channel(data)
+            elif command == 'leave_channel':
+                await self.handle_leave_channel(data)
+            elif command == 'new_message':
+                await self.handle_new_message(data)
+            elif command == 'typing_start':
+                await self.handle_typing_start(data)
+            elif command == 'typing_stop':
+                await self.handle_typing_stop(data)
+            elif command == 'message_read':
+                await self.handle_message_read(data)
+            elif command == 'message_edit':
+                await self.handle_message_edit(data)
+            elif command == 'message_delete':
+                await self.handle_message_delete(data)
+            elif command == 'reaction_add':
+                await self.handle_reaction_add(data)
+            elif command == 'reaction_remove':
+                await self.handle_reaction_remove(data) # Added missing handler
+            else:
+                await self.send_json({'type': 'error', 'message': f'Unknown command: {command}'})
+
+        except Channel.DoesNotExist:
+            await self.send_json({'type': 'error', 'message': 'Channel not found.'})
+        except Message.DoesNotExist:
+            await self.send_json({'type': 'error', 'message': 'Message not found.'})
+        except Exception as e:
+            print(f"Error handling message: {e}")
+            await self.send_json({'type': 'error', 'message': 'An internal error occurred.'})
+
+    # --- Handlers for commands (sent FROM client) ---
+
+    async def handle_join_channel(self, data):
+        """Add consumer to channel group for message broadcasts."""
+        channel_id = data.get('channel_id')
+        if not await self.is_channel_member(channel_id):
+            await self.send_json({'type': 'error', 'message': 'Not a member of this channel.'})
             return
 
-        # Replace dot notation with underscore for method lookup: 'message.send' -> 'handle_message_send'
-        handler_method = getattr(self, f"handle_{message_type.replace('.', '_')}", None)
-        
-        if handler_method:
-            await handler_method(content)
-        else:
-            await self.send_json({'error': f"Unknown message type: {message_type}"})
+        # Join the specific channel group
+        self.channel_id = channel_id
+        self.channel_group_name = f'channel_{channel_id}'
+        await self.channel_layer.group_add(
+            self.channel_group_name,
+            self.channel_name
+        )
+        await self.send_json({'type': 'channel.joined', 'channel_id': channel_id})
 
-    # == Command Implementations (Handling client requests) ==
+    async def handle_leave_channel(self, data):
+        """Remove consumer from channel group."""
+        channel_id = data.get('channel_id')
+        channel_group_name = f'channel_{channel_id}'
+        await self.channel_layer.group_discard(
+            channel_group_name,
+            self.channel_name
+        )
+        await self.send_json({'type': 'channel.left', 'channel_id': channel_id})
 
-    async def handle_message_send(self, data):
-        """Save message to DB and broadcast."""
+    async def handle_new_message(self, data):
+        """Save new message and broadcast it to the channel group"""
         channel_id = data.get('channel_id')
         content = data.get('content')
         parent_message_id = data.get('parent_message_id')
-        
-        if not channel_id or not content:
-            await self.send_json({'error': 'Missing channel_id or content.'})
+        attachments = data.get('attachments')
+
+        if not content or not channel_id:
+            await self.send_json({'type': 'error', 'message': 'Missing message content or channel ID.'})
             return
 
-        # 1. Save and serialize message (including validation and mention extraction)
-        result = await self.create_and_serialize_message(
-            channel_id, 
-            content, 
-            self.user, 
-            parent_message_id
-        )
-        
-        if result['error']:
-            await self.send_json({'error': result['error']})
+        if not await self.is_channel_member(channel_id):
+            await self.send_json({'type': 'error', 'message': 'Not authorized to post to this channel.'})
             return
-            
-        message_data = result['message']
+
+        message = await self.save_message(channel_id, content, parent_message_id, attachments)
         
-        # 2. Broadcast the message to the channel group
-        channel_group_name = f'channel_{channel_id}'
+        # Extract and save mentions (done asynchronously in the signal)
+
+        serialized_message = await self.serialize_message(message)
+
+        # Broadcast the new message to all channel members (including sender)
         await self.channel_layer.group_send(
-            channel_group_name,
+            f'channel_{channel_id}',
             {
-                'type': 'message.new', # Group handler method
-                'message': message_data,
+                'type': 'message_new', # Corresponds to the method below
+                'message': serialized_message
             }
         )
-        
-        # 3. Send direct notifications to mentioned users (optional)
-        for user_id in result['mentioned_user_ids']:
-            await self.channel_layer.group_send(
-                f'user_{user_id}', # Group for a specific user's channels
-                {
-                    'type': 'notification.mention',
-                    'message': message_data,
-                }
-            )
+
+        # Trigger message read update for sender (auto-read on send)
+        await self.update_last_read(channel_id)
 
 
     async def handle_typing_start(self, data):
-        """Broadcast typing indicator."""
+        """Start typing indicator"""
         channel_id = data.get('channel_id')
-        if not channel_id: return
-        
-        if not await self.is_user_channel_member(self.user.id, channel_id): return
 
         await self.channel_layer.group_send(
-            f"channel_{channel_id}",
+            f'channel_{channel_id}',
             {
-                'type': 'user.typing',
+                'type': 'user_typing',
                 'user_id': str(self.user.id),
                 'username': self.user.username,
-                'channel_id': str(channel_id),
-                'is_typing': True,
+                'channel_id': channel_id
             }
         )
-        
+
     async def handle_typing_stop(self, data):
-        """Stop typing indicator."""
+        """Stop typing indicator"""
         channel_id = data.get('channel_id')
-        if not channel_id: return
-        
-        if not await self.is_user_channel_member(self.user.id, channel_id): return
 
         await self.channel_layer.group_send(
-            f"channel_{channel_id}",
+            f'channel_{channel_id}',
             {
-                'type': 'user.typing',
+                'type': 'user_stopped_typing',
                 'user_id': str(self.user.id),
-                'username': self.user.username,
-                'channel_id': str(channel_id),
-                'is_typing': False,
+                'channel_id': channel_id
             }
         )
-        
+
     async def handle_message_read(self, data):
-        """Update last_read_at for the channel member."""
+        """Update last_read_at"""
         channel_id = data.get('channel_id')
-        
-        if not channel_id:
-            await self.send_json({'error': 'Missing channel_id for read receipt.'})
+        await self.update_last_read(channel_id)
+        # No broadcast is usually needed for this
+
+    async def handle_message_edit(self, data):
+        """Edit message"""
+        message_id = data.get('message_id')
+        new_content = data.get('content')
+
+        try:
+            message = await self.edit_message(message_id, new_content)
+        except Message.DoesNotExist:
+            await self.send_json({'type': 'error', 'message': 'Message not found or not owned by user.'})
             return
 
-        # 1. Update last_read_at in the database
-        member_data = await self.update_channel_last_read(self.user.id, channel_id)
-        
-        if not member_data:
-            return
-            
-        # 2. Broadcast the read receipt event to the channel group
         await self.channel_layer.group_send(
-            f"channel_{channel_id}",
+            f'channel_{message.channel_id}',
             {
-                'type': 'message.read',
-                'user_id': str(self.user.id),
-                'channel_id': str(channel_id),
-                'last_read_at': member_data['last_read_at'],
+                'type': 'message_updated',
+                'message': await self.serialize_message(message)
             }
         )
 
-    async def handle_presence_update(self, data):
-        """Broadcast custom presence updates (e.g., set away status)."""
-        status = data.get('status')
-        if status in ['away', 'busy']:
-             await self.channel_layer.group_send(
-                self.workspace_group_name,
-                {
-                    'type': 'user.presence',
-                    'user_id': str(self.user.id),
-                    'status': status,
-                }
-            )
+    async def handle_message_delete(self, data):
+        """Soft delete message"""
+        message_id = data.get('message_id')
 
-    # == Group Handler Methods (The 'type' methods - sent TO client) ==
+        try:
+            channel_id = await self.delete_message(message_id) # Returns channel_id
+        except Message.DoesNotExist:
+            await self.send_json({'type': 'error', 'message': 'Message not found or not owned by user.'})
+            return
+
+        await self.channel_layer.group_send(
+            f'channel_{channel_id}',
+            {
+                'type': 'message_deleted',
+                'message_id': message_id
+            }
+        )
+
+    async def handle_reaction_add(self, data):
+        """Add reaction to message"""
+        message_id = data.get('message_id')
+        emoji = data.get('emoji')
+
+        reaction = await self.add_reaction(message_id, emoji)
+
+        # Assuming reaction contains the message and user info
+        message = await self.get_message(message_id)
+
+        await self.channel_layer.group_send(
+            f'channel_{message.channel_id}',
+            {
+                'type': 'reaction_added',
+                'message_id': message_id,
+                'emoji': emoji,
+                'user_id': str(self.user.id)
+            }
+        )
+    
+    async def handle_reaction_remove(self, data):
+        """Remove reaction from message (Missing handler in original prompt)"""
+        message_id = data.get('message_id')
+        emoji = data.get('emoji')
+
+        await self.remove_reaction(message_id, emoji)
+        
+        message = await self.get_message(message_id)
+
+        await self.channel_layer.group_send(
+            f'channel_{message.channel_id}',
+            {
+                'type': 'reaction_removed',
+                'message_id': message_id,
+                'emoji': emoji,
+                'user_id': str(self.user.id)
+            }
+        )
+
+    # --- Message types (sent TO client) ---
 
     async def message_new(self, event):
-        """Send new message to client."""
+        """Send new message to client"""
         await self.send_json({
             'type': 'message.new',
-            'message': event['message'],
+            'message': event['message']
         })
 
-    async def message_read(self, event):
-        """Send read receipt update."""
+    async def message_updated(self, event):
+        """Send updated message to client"""
         await self.send_json({
-            'type': 'message.read',
-            'user_id': event['user_id'],
-            'channel_id': event['channel_id'],
-            'last_read_at': event['last_read_at'],
+            'type': 'message.updated',
+            'message': event['message']
+        })
+
+    async def message_deleted(self, event):
+        """Send deletion notification"""
+        await self.send_json({
+            'type': 'message.deleted',
+            'message_id': event['message_id']
         })
 
     async def user_typing(self, event):
-        """Send typing indicator."""
-        # Prevent echoing back to the sender
-        if event.get('user_id') != str(self.user.id):
+        """Send typing indicator"""
+        # Don't send typing indicator back to the user who's typing
+        if event['user_id'] != str(self.user.id):
             await self.send_json({
                 'type': 'user.typing',
                 'user_id': event['user_id'],
                 'username': event['username'],
-                'channel_id': event['channel_id'],
-                'is_typing': event['is_typing'],
+                'channel_id': event['channel_id']
             })
 
+    async def user_stopped_typing(self, event):
+        """User stopped typing"""
+        await self.send_json({
+            'type': 'user.stopped_typing',
+            'user_id': event['user_id'],
+            'channel_id': event['channel_id']
+        })
+
     async def user_online(self, event):
-        """Send online status."""
-        if event.get('user_id') != str(self.user.id):
+        """Send online status"""
+        if event['user_id'] != str(self.user.id):
             await self.send_json({
-                'type': 'presence.update',
-                'status': 'online',
+                'type': 'user.online',
                 'user_id': event['user_id'],
-                'username': event['username'],
+                'username': event['username']
             })
 
     async def user_offline(self, event):
-        """Send offline status."""
-        if event.get('user_id') != str(self.user.id):
+        """Send offline status"""
+        if event['user_id'] != str(self.user.id):
             await self.send_json({
-                'type': 'presence.update',
-                'status': 'offline',
-                'user_id': event['user_id'],
-                'username': event['username'],
+                'type': 'user.offline',
+                'user_id': event['user_id']
             })
 
-    async def user_presence(self, event):
-        """Send custom presence status."""
-        if event.get('user_id') != str(self.user.id):
-            await self.send_json({
-                'type': 'presence.update',
-                'status': event['status'],
-                'user_id': event['user_id'],
-            })
+    async def reaction_added(self, event):
+        """Send reaction added"""
+        await self.send_json({
+            'type': 'reaction.added',
+            'message_id': event['message_id'],
+            'emoji': event['emoji'],
+            'user_id': event['user_id']
+        })
+        
+    async def reaction_removed(self, event):
+        """Send reaction removed (Missing in original prompt)"""
+        await self.send_json({
+            'type': 'reaction.removed',
+            'message_id': event['message_id'],
+            'emoji': event['emoji'],
+            'user_id': event['user_id']
+        })
 
-    # Other message types (message.updated, message.deleted) would also be implemented here
+    # --- Database operations (wrapped with database_sync_to_async) ---
 
-    # == Database Synchronization Methods ==
-
-    @sync_to_async
-    def get_user_channel_groups(self, user, workspace_id):
-        """Fetch group names for all channels the user is a member of in this workspace."""
-        try:
-            # Assuming a Workspace ID check is needed here
-            if not Workspace.objects.filter(id=workspace_id).exists(): return []
-
-            channels = Channel.objects.filter(
-                workspace_id=workspace_id, 
-                channelmember__user=user, 
-                is_archived=False
-            )
-            # Group name format: 'channel_<UUID>'
-            return [f"channel_{c.id}" for c in channels]
-        except Exception as e:
-            print(f"Error fetching channels for user: {e}")
-            return []
-
-    @sync_to_async
-    def is_user_channel_member(self, user_id, channel_id):
-        """Check if a user is an active member of a channel."""
-        return ChannelMember.objects.filter(
-            user_id=user_id, 
-            channel_id=channel_id
+    @database_sync_to_async
+    def is_workspace_member(self):
+        from apps.workspaces.models import WorkspaceMember
+        return WorkspaceMember.objects.filter(
+            workspace_id=self.workspace_id,
+            user=self.user
         ).exists()
 
-    @sync_to_async
-    def create_and_serialize_message(self, channel_id, content, sender, parent_message_id=None):
-        """Saves a message to the database, handles mentions, and serializes it."""
+    @database_sync_to_async
+    def is_channel_member(self, channel_id):
+        return ChannelMember.objects.filter(
+            channel_id=channel_id,
+            user=self.user
+        ).exists()
         
-        result = {'message': None, 'error': None, 'mentioned_user_ids': []}
-        
-        try:
-            # 1. Validation: Check if user is a member
-            if not ChannelMember.objects.filter(user=sender, channel_id=channel_id).exists():
-                result['error'] = 'User is not a member of this channel.'
-                return result
-                
-            # 2. Find parent message (for threading)
-            parent_message = None
-            if parent_message_id:
-                try:
-                    parent_message = Message.objects.get(id=parent_message_id, channel_id=channel_id)
-                except Message.DoesNotExist:
-                    result['error'] = 'Parent message not found.'
-                    return result
-            
-            # 3. Create the message
-            message = Message.objects.create(
-                channel_id=channel_id,
-                sender=sender,
-                content=content,
-                parent_message=parent_message
-            )
-            
-            # 4. Handle Mentions
-            # Find usernames matching '@username' pattern
-            mentioned_usernames = re.findall(r'@(\w+)', content)
-            
-            if mentioned_usernames:
-                # Filter users down to only those who are members of the current channel
-                mentioned_users = User.objects.filter(
-                    username__in=mentioned_usernames, 
-                    channelmember__channel_id=channel_id
-                ).distinct()
-                
-                message.mentions.set(mentioned_users)
-                result['mentioned_user_ids'] = list(mentioned_users.values_list('id', flat=True))
-                
-            # 5. Update ChannelMember last_read_at for the sender
-            ChannelMember.objects.filter(user=sender, channel_id=channel_id).update(last_read_at=timezone.now())
-            
-            # 6. Simple Serialization for broadcast
-            result['message'] = {
-                'id': str(message.id),
-                'channel_id': str(message.channel_id),
-                'sender': {'id': str(sender.id), 'username': sender.username},
-                'content': message.content,
-                'created_at': message.created_at.isoformat(),
-                'parent_message_id': str(message.parent_message_id) if message.parent_message_id else None,
-                'mentions': list(message.mentions.values('id', 'username')),
-                'reactions': [], 
-            }
-            return result
-            
-        except Exception as e:
-            result['error'] = f"Database error on message creation: {e}"
-            return result
+    @database_sync_to_async
+    def get_message(self, message_id):
+        # Helper to get message object for channel_id
+        return Message.objects.get(id=message_id)
 
-    @sync_to_async
-    def update_channel_last_read(self, user_id, channel_id):
-        """Updates the ChannelMember's last_read_at timestamp."""
-        try:
-            member = ChannelMember.objects.get(user_id=user_id, channel_id=channel_id)
-            member.last_read_at = timezone.now()
-            member.save(update_fields=['last_read_at', 'updated_at'])
-            return {'last_read_at': member.last_read_at.isoformat()}
-        except ChannelMember.DoesNotExist:
-            # User is not a member, no update possible
-            return None
+    @database_sync_to_async
+    def save_message(self, channel_id, content, parent_message_id=None, attachments=None):
+        return Message.objects.create(
+            channel_id=channel_id,
+            sender=self.user,
+            content=content,
+            parent_message_id=parent_message_id,
+            attachments=attachments or []
+        )
+
+    @database_sync_to_async
+    def serialize_message(self, message):
+        # Must import serializer within function to avoid circular import if needed
+        from .serializers import MessageSerializer
+        # Pass a dummy request for context
+        from rest_framework.request import Request
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = Request(factory.get('/'))
+        return MessageSerializer(message, context={'request': request}).data
+
+    @database_sync_to_async
+    def extract_mentions(self, content):
+        import re
+        # Extract @username mentions
+        mentions = re.findall(r'@(\w+)', content)
+        user_ids = User.objects.filter(
+            username__in=mentions
+        ).values_list('id', flat=True)
+        return list(user_ids)
+
+    @database_sync_to_async
+    def update_last_read(self, channel_id):
+        ChannelMember.objects.filter(
+            channel_id=channel_id,
+            user=self.user
+        ).update(last_read_at=timezone.now())
+
+    @database_sync_to_async
+    def edit_message(self, message_id, new_content):
+        # Ensures only the sender can edit
+        message = Message.objects.get(id=message_id, sender=self.user, is_deleted=False)
+        message.content = new_content
+        message.is_edited = True
+        message.edited_at = timezone.now()
+        message.save()
+        return message
+
+    @database_sync_to_async
+    def delete_message(self, message_id):
+        # Soft delete. Also ensures only the sender can delete
+        message = Message.objects.get(id=message_id, sender=self.user)
+        channel_id = message.channel_id
+        message.is_deleted = True
+        message.save()
+        return channel_id
+
+    @database_sync_to_async
+    def add_reaction(self, message_id, emoji):
+        return MessageReaction.objects.get_or_create(
+            message_id=message_id,
+            user=self.user,
+            emoji=emoji
+        )
+        
+    @database_sync_to_async
+    def remove_reaction(self, message_id, emoji):
+        return MessageReaction.objects.filter(
+            message_id=message_id,
+            user=self.user,
+            emoji=emoji
+        ).delete()

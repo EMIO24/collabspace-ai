@@ -1,143 +1,161 @@
 from rest_framework import serializers
-from django.db.models import Count, Q
+from .models import Channel, Message, DirectMessage, ChannelMember, MessageReaction
+from django.db.models import Count, Max, Q
 from django.utils import timezone
-from .models import Channel, Message, MessageReaction, DirectMessage, ChannelMember
-from django.conf import settings
+# Assuming profile/user structure for get_user methods:
 
-User = settings.AUTH_USER_MODEL
 
-# Placeholder for a simplified User Serializer
-class SimpleUserSerializer(serializers.ModelSerializer):
-    """Minimal user details for references (sender, member, mention)."""
+class ChannelMemberSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
+
     class Meta:
-        model = User
-        fields = ('id', 'username')
+        model = ChannelMember
+        fields = ['user', 'role', 'created_at', 'last_read_at', 'unread_count', 'notifications_enabled'] # changed joined_at to created_at
+
+    def get_user(self, obj):
+        # Use obj.user to access the related User object
+        user = obj.user
+        return {
+            'id': str(user.id),
+            'username': user.username,
+            'full_name': user.get_full_name(),
+            'avatar': getattr(user, 'profile', None).avatar_url if hasattr(user, 'profile') else None
+        }
+
+    def get_unread_count(self, obj):
+        # Calls the method defined on the ChannelMember model
+        return obj.get_unread_count()
+
 
 class MessageReactionSerializer(serializers.ModelSerializer):
-    """Serializer for message reactions, including custom creation/deletion fields."""
-    user = SimpleUserSerializer(read_only=True)
+    user = serializers.SerializerMethodField()
 
     class Meta:
         model = MessageReaction
-        fields = ('id', 'user', 'emoji', 'created_at', 'message')
-        read_only_fields = ('user', 'created_at', 'id')
-        extra_kwargs = {'message': {'write_only': True, 'required': False}}
+        fields = ['emoji', 'user', 'created_at']
+
+    def get_user(self, obj):
+        # Use obj.user to access the related User object
+        user = obj.user
+        return {
+            'id': str(user.id),
+            'username': user.username
+        }
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = serializers.SerializerMethodField()
+    reactions = MessageReactionSerializer(many=True, read_only=True)
+    reactions_summary = serializers.SerializerMethodField()
+    reply_count = serializers.IntegerField(source='replies.count', read_only=True)
     
-    def create(self, validated_data):
-        # Enforce unique constraint by attempting to update if exists
-        reaction, created = MessageReaction.objects.update_or_create(
-            message=validated_data.get('message'),
-            user=validated_data.get('user'),
-            emoji=validated_data.get('emoji'),
-            defaults={'created_at': timezone.now()}
-        )
-        return reaction
+    # Nested field for parent message preview (optional, adjust if too deep)
+    parent_message_preview = serializers.SerializerMethodField()
 
+    class Meta:
+        model = Message
+        fields = '__all__'
+        read_only_fields = ['sender', 'is_edited', 'edited_at']
 
-# --- Channel Serializers ---
+    def get_sender(self, obj):
+        user = obj.sender
+        if not user:
+             return {'id': None, 'username': 'deleted_user', 'full_name': 'Deleted User', 'avatar': None}
+             
+        return {
+            'id': str(user.id),
+            'username': user.username,
+            'full_name': user.get_full_name(),
+            'avatar': getattr(user, 'profile', None).avatar_url if hasattr(user, 'profile') else None
+        }
+
+    def get_reactions_summary(self, obj):
+        # Group reactions by emoji with count
+        reactions = obj.reactions.values('emoji').annotate(count=Count('id'))
+        return {r['emoji']: r['count'] for r in reactions}
+
+    def get_parent_message_preview(self, obj):
+        if obj.parent_message:
+            # Only serialize a minimal version to avoid recursion
+            return {
+                'id': str(obj.parent_message.id),
+                'content': obj.parent_message.content[:100] + '...' if len(obj.parent_message.content) > 100 else obj.parent_message.content,
+                'sender_username': obj.parent_message.sender.username if obj.parent_message.sender else 'deleted_user',
+                'created_at': obj.parent_message.created_at
+            }
+        return None
+
 
 class ChannelSerializer(serializers.ModelSerializer):
-    """Serializer for listing channels (includes unread count)."""
-    # Requires 'user' in context (context={'request': request})
-    unread_count = serializers.SerializerMethodField() 
+    members_count = serializers.IntegerField(source='members.count', read_only=True)
+    unread_count = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    # Add created_by details
+    created_by = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Channel
-        fields = ('id', 'name', 'description', 'channel_type', 'is_archived', 'created_at', 'unread_count')
-        read_only_fields = ('created_at', 'is_archived', 'unread_count')
-        
-    def get_unread_count(self, obj):
-        """Calculates the number of unread messages for the requesting user."""
-        request = self.context.get('request')
-        if not request or not request.user.is_authenticated:
-            return 0
-        
-        try:
-            member = ChannelMember.objects.get(channel=obj, user=request.user)
-            last_read_at = member.last_read_at
-            
-            # Count messages created after the user's last read time
-            if last_read_at:
-                return obj.messages.filter(created_at__gt=last_read_at).count()
-            
-            # If never read, count all messages
-            return obj.messages.count()
-            
-        except ChannelMember.DoesNotExist:
-            return 0
+        fields = '__all__'
+        read_only_fields = ['created_by']
 
-class ChannelDetailSerializer(ChannelSerializer):
-    """Serializer for detailed channel view (includes members)."""
-    members = SimpleUserSerializer(many=True, read_only=True)
-    
-    class Meta(ChannelSerializer.Meta):
-        fields = ChannelSerializer.Meta.fields + ('members', 'created_by')
-        read_only_fields = ChannelSerializer.Meta.read_only_fields + ('created_by',)
-
-
-# --- Message Serializers ---
-
-class MessageSerializer(serializers.ModelSerializer):
-    """Full message serializer for listing and retrieval."""
-    sender = SimpleUserSerializer(read_only=True)
-    mentions = SimpleUserSerializer(many=True, read_only=True)
-    reactions = MessageReactionSerializer(many=True, read_only=True)
-    
-    class Meta:
-        model = Message
-        fields = (
-            'id', 'channel', 'sender', 'content', 'message_type', 'parent_message', 
-            'mentions', 'attachments', 'reactions', 'is_edited', 'is_pinned', 
-            'created_at', 'updated_at'
-        )
-        read_only_fields = (
-            'channel', 'sender', 'message_type', 'attachments', 'is_edited', 
-            'is_pinned', 'created_at', 'updated_at', 'reactions'
-        )
-
-class MessageCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating messages (input only)."""
-    # Note: sender and channel are set in the view
-    class Meta:
-        model = Message
-        fields = ('content', 'parent_message', 'message_type', 'attachments')
-        extra_kwargs = {
-            'content': {'required': True},
-            'message_type': {'required': False, 'default': 'text'},
-            'attachments': {'required': False, 'default': []},
-            'parent_message': {'required': False},
+    def get_created_by(self, obj):
+        user = obj.created_by
+        if not user:
+            return None
+        return {
+            'id': str(user.id),
+            'username': user.username,
         }
 
-# --- Direct Message Serializers ---
+    def get_unread_count(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            try:
+                # Use obj.channelmember_set for reverse lookup if related_name isn't used on ChannelMember model
+                # Assuming ChannelMember.objects.get works based on model definition
+                member = ChannelMember.objects.get(channel=obj, user=request.user)
+                # Calls the get_unread_count method on the member instance
+                return member.get_unread_count()
+            except ChannelMember.DoesNotExist:
+                return 0
+        return 0
+
+    def get_last_message(self, obj):
+        # Efficiently fetch the last message without loading the entire queryset
+        last_msg = obj.messages.filter(is_deleted=False).order_by('-created_at').first()
+        if last_msg:
+            # Use a minimal serializer to avoid recursion and excessive data
+            return {
+                'id': str(last_msg.id),
+                'content': last_msg.content[:50] + '...',
+                'sender_username': last_msg.sender.username if last_msg.sender else 'deleted_user',
+                'created_at': last_msg.created_at
+            }
+        return None
+
 
 class DirectMessageSerializer(serializers.ModelSerializer):
-    """Direct message serializer for listing, retrieval, and creation."""
-    sender = SimpleUserSerializer(read_only=True)
-    recipient = SimpleUserSerializer(read_only=True)
-    
-    # Recipient ID is write-only for creation
-    recipient_id = serializers.UUIDField(write_only=True, required=False)
+    sender = serializers.SerializerMethodField()
+    recipient = serializers.SerializerMethodField()
 
     class Meta:
         model = DirectMessage
-        fields = ('id', 'sender', 'recipient', 'recipient_id', 'content', 'is_read', 'read_at', 'created_at')
-        read_only_fields = ('sender', 'recipient', 'is_read', 'read_at', 'created_at')
-        
-    def create(self, validated_data):
-        # We need the recipient_id from validated_data to look up the recipient User object
-        recipient_id = validated_data.pop('recipient_id', None)
-        sender = validated_data.get('sender') # Sender is set by the view (request.user)
-        
-        if not recipient_id:
-            raise serializers.ValidationError({"recipient_id": "Recipient ID must be provided."})
-            
-        try:
-            recipient = User.objects.get(id=recipient_id)
-        except User.DoesNotExist:
-            raise serializers.ValidationError({"recipient_id": "Recipient user not found."})
-            
-        if sender == recipient:
-             raise serializers.ValidationError({"recipient_id": "Cannot send a DM to yourself."})
+        fields = '__all__'
+        read_only_fields = ['sender', 'is_read', 'read_at']
 
-        validated_data['recipient'] = recipient
-        return super().create(validated_data)
+    def get_sender(self, obj):
+        user = obj.sender
+        return {
+            'id': str(user.id),
+            'username': user.username,
+            'full_name': user.get_full_name()
+        }
+
+    def get_recipient(self, obj):
+        user = obj.recipient
+        return {
+            'id': str(user.id),
+            'username': user.username,
+            'full_name': user.get_full_name()
+        }

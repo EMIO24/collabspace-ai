@@ -1,7 +1,7 @@
-from django.urls import re_path
+from django.urls import path, re_path
 from . import consumers
 
 websocket_urlpatterns = [
-    # Path captures the workspace ID for context-specific group management
-    re_path(r'ws/workspace/(?P<workspace_id>[0-9a-f-]+)/$', consumers.ChatConsumer.as_asgi()),
+    # Requires an authenticated user and workspace_id in the URL
+    re_path(r'ws/workspace/(?P<workspace_id>[^/]+)/$', consumers.ChatConsumer.as_asgi()),
 ]
