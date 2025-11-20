@@ -56,17 +56,17 @@ urlpatterns = [
     path("health/db/", db_health_check, name="db-health-check"),
 
     # API v1 Routes (namespaced per app inside apps/)
-    path("api/v1/auth/", include(("apps.authentication.urls", "authentication"), namespace="authentication")),
-    path("api/v1/core/", include(("apps.core.urls", "core"), namespace="core")),
-    path("api/v1/workspaces/", include(("apps.workspaces.urls", "workspaces"), namespace="workspaces")),
-    path("api/v1/projects/", include(("apps.projects.urls", "projects"), namespace="projects")),
-    path("api/v1/tasks/", include(("apps.tasks.urls", "tasks"), namespace="tasks")),
-    path("api/v1/ai/", include(("apps.ai_features.urls", "ai_features"), namespace="ai_features")),
-    path("api/v1/messaging/", include(("apps.messaging.urls", "messaging"), namespace="messaging")),
-    path("api/v1/files/", include(("apps.files.urls", "files"), namespace="files")),
-    path("api/v1/notifications/", include(("apps.notifications.urls", "notifications"), namespace="notifications")),
-    path("api/v1/analytics/", include(("apps.analytics.urls", "analytics"), namespace="analytics")),
-    path("api/v1/integrations/", include(("apps.integrations.urls", "integrations"), namespace="integrations")),
+    path("api/auth/", include(("apps.authentication.urls", "authentication"), namespace="authentication")),
+    path("api/core/", include(("apps.core.urls", "core"), namespace="core")),
+    path("api/workspaces/", include(("apps.workspaces.urls", "workspaces"), namespace="workspaces")),
+    path("api/projects/", include(("apps.projects.urls", "projects"), namespace="projects")),
+    path("api/tasks/", include(("apps.tasks.urls", "tasks"), namespace="tasks")),
+    path("api/ai/", include(("apps.ai_features.urls", "ai_features"), namespace="ai_features")),
+    path("api/messaging/", include(("apps.messaging.urls", "messaging"), namespace="messaging")),
+    path("api/files/", include(("apps.files.urls", "files"), namespace="files")),
+    path("api/notifications/", include(("apps.notifications.urls", "notifications"), namespace="notifications")),
+    path("api/analytics/", include(("apps.analytics.urls", "analytics"), namespace="analytics")),
+    path("api/integrations/", include(("apps.integrations.urls", "integrations"), namespace="integrations")),
 
     # API Documentation
     path("api/docs/", schema_view.with_ui("swagger", cache_timeout=0), name="swagger-docs"),

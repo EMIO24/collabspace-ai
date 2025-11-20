@@ -1,0 +1,39 @@
+INFO 2025-11-19 15:00:36,220 autoreload 5336 140392813027456 Watching for file changes with StatReloader
+WARNING 2025-11-19 15:00:44,618 basehttp 5336 140392661952192 "GET / HTTP/1.1" 404 4944
+WARNING 2025-11-19 15:00:44,913 basehttp 5336 140392661952192 "GET /favicon.ico HTTP/1.1" 404 4995
+INFO 2025-11-19 15:01:02,362 basehttp 5336 140392661952192 "GET /admin/ HTTP/1.1" 302 0
+INFO 2025-11-19 15:01:02,462 basehttp 5336 140392661952192 "GET /admin/login/?next=/admin/ HTTP/1.1" 200 4187
+INFO 2025-11-19 15:01:02,548 basehttp 5336 140392661952192 "GET /static/admin/css/base.css HTTP/1.1" 200 22120
+INFO 2025-11-19 15:01:02,558 basehttp 5336 140392653559488 "GET /static/admin/css/dark_mode.css HTTP/1.1" 200 2808
+INFO 2025-11-19 15:01:02,568 basehttp 5336 140392633628352 "GET /static/admin/css/nav_sidebar.css HTTP/1.1" 200 2810
+INFO 2025-11-19 15:01:02,568 basehttp 5336 140392642021056 "GET /static/admin/js/theme.js HTTP/1.1" 200 1653
+INFO 2025-11-19 15:01:02,569 basehttp 5336 140392625235648 "GET /static/admin/css/login.css HTTP/1.1" 200 951
+INFO 2025-11-19 15:01:02,570 basehttp 5336 140392280356544 "GET /static/admin/css/responsive.css HTTP/1.1" 200 16565
+INFO 2025-11-19 15:01:02,581 basehttp 5336 140392625235648 "GET /static/admin/js/nav_sidebar.js HTTP/1.1" 200 3063
+WARNING 2025-11-19 15:01:28,944 basehttp 5336 140392625235648 "GET /health/%20[name='health-check'] HTTP/1.1" 404 5087
+INFO 2025-11-19 15:01:50,718 basehttp 5336 140392625235648 "GET /health/ HTTP/1.1" 200 53
+INFO 2025-11-19 15:02:01,200 basehttp 5336 140392625235648 "GET /health/db HTTP/1.1" 301 0
+INFO 2025-11-19 15:02:01,247 basehttp 5336 140392661952192 "GET /health/db/ HTTP/1.1" 200 25
+INFO 2025-11-19 16:28:26,289 autoreload 5336 140392813027456 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/urls.py changed, reloading.
+INFO 2025-11-19 16:28:33,236 autoreload 5465 140511512412288 Watching for file changes with StatReloader
+INFO 2025-11-19 16:28:41,604 autoreload 5465 140511512412288 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/urls.py changed, reloading.
+INFO 2025-11-19 16:28:44,585 autoreload 5468 140621818200192 Watching for file changes with StatReloader
+INFO 2025-11-19 16:28:57,698 autoreload 5468 140621818200192 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/urls.py changed, reloading.
+INFO 2025-11-19 16:29:00,633 autoreload 5479 140201820086400 Watching for file changes with StatReloader
+WARNING 2025-11-19 16:29:14,128 basehttp 5479 140201669076672 "GET /health/%20[name='health-check'] HTTP/1.1" 404 5054
+INFO 2025-11-19 16:32:19,039 autoreload 5479 140201820086400 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/settings/base.py changed, reloading.
+INFO 2025-11-19 16:32:23,230 autoreload 5495 140448750289024 Watching for file changes with StatReloader
+INFO 2025-11-19 16:32:28,231 autoreload 5495 140448750289024 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/settings/base.py changed, reloading.
+INFO 2025-11-19 16:32:31,335 autoreload 5500 140582261424256 Watching for file changes with StatReloader
+INFO 2025-11-19 16:36:52,280 autoreload 5500 140582261424256 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/settings/base.py changed, reloading.
+INFO 2025-11-19 16:36:55,299 autoreload 5526 140099243614336 Watching for file changes with StatReloader
+WARNING 2025-11-19 17:01:08,898 basehttp 5526 140099092129472 "GET / HTTP/1.1" 404 4911
+ERROR 2025-11-19 17:01:56,941 basehttp 5526 140099005179584 "POST /api/auth/register/ HTTP/1.1" 500 154
+INFO 2025-11-19 18:24:08,112 autoreload 5685 139755562651776 Watching for file changes with StatReloader
+ERROR 2025-11-19 18:24:27,963 basehttp 5685 139755342788288 "POST /api/auth/register/ HTTP/1.1" 500 154
+INFO 2025-11-19 18:51:45,660 autoreload 6193 139912369053824 Watching for file changes with StatReloader
+ERROR 2025-11-19 18:52:19,521 basehttp 6193 139912217011904 "POST /api/auth/register/ HTTP/1.1" 500 124
+INFO 2025-11-19 19:30:48,394 autoreload 6402 140135572127872 Watching for file changes with StatReloader
+WARNING 2025-11-19 19:32:11,983 basehttp 6402 140135420044992 "POST /api/auth/register/ HTTP/1.1" 400 193
+WARNING 2025-11-19 19:33:31,945 basehttp 6402 140135420044992 "POST /api/auth/register/ HTTP/1.1" 400 250
+ERROR 2025-11-19 19:34:17,969 basehttp 6402 140135420044992 "POST /api/auth/register/ HTTP/1.1" 500 124

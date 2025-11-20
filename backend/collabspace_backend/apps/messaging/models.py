@@ -3,7 +3,8 @@ from django.db.models import F, Q, Count
 from django.utils import timezone
 from apps.authentication.models import User # Assuming User model location
 from apps.workspaces.models import Workspace # Assuming Workspace model location
-from utils.models import BaseModel, TimeStampedModel # Assuming base models are here
+from apps.core.models import BaseModel, TimeStampedModel
+
 
 
 class Channel(BaseModel):

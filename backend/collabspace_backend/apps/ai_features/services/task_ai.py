@@ -7,6 +7,8 @@ from pydantic import BaseModel as PydanticBaseModel, Field
 from .gemini_service import GeminiService
 from .audio_service import AudioService # Assumed new module/service
 from ..models import AIRateLimit 
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 
 class TaskAIService:

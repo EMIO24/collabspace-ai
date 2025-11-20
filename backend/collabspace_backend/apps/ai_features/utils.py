@@ -5,12 +5,12 @@ import os
 from datetime import timedelta
 from django.utils import timezone
 from .models import AICache, AIRateLimit
+from typing import Dict, Any, Optional, List  # ✅ Added List
 
 # --- Caching and Hashing ---
 
 def calculate_request_hash(prompt: str, model: str, params: Dict[str, Any]) -> str:
     """Calculate hash for caching AI responses based on input parameters."""
-    # Ensure consistent order for dict keys in params
     cache_key = f"{prompt}_{model}_{json.dumps(params, sort_keys=True)}"
     return hashlib.md5(cache_key.encode('utf-8')).hexdigest()
 
@@ -24,7 +24,6 @@ def cache_ai_response(request_hash: str, prompt: str, response_text: str, model_
             model_used=model_used
         )
     except Exception as e:
-        # Fail silently on cache error
         print(f"Cache failed: {e}")
 
 def get_cached_response(request_hash: str) -> Optional[str]:
@@ -39,7 +38,6 @@ def get_cached_response(request_hash: str) -> Optional[str]:
     except AICache.DoesNotExist:
         pass
     except Exception as e:
-        # Fail silently on cache error
         print(f"Cache retrieval failed: {e}")
     return None
 
@@ -47,22 +45,18 @@ def get_cached_response(request_hash: str) -> Optional[str]:
 
 def estimate_tokens(text: str) -> int:
     """Estimate token count (rough approximation: 1 token ≈ 4 chars)."""
-    # This is a safe approximation for estimation, but the model should return the actual count
     return len(text) // 4
 
 def truncate_for_context(text: str, max_tokens: int = 32000) -> str:
     """Truncate text to fit within Gemini context window (4 chars per token)."""
-    # Leaving some buffer
-    max_chars = int(max_tokens * 3.5) 
+    max_chars = int(max_tokens * 3.5)
     if len(text) <= max_chars:
         return text
     return text[:max_chars] + "... [TRUNCATED]"
 
 def check_content_safety(text: str) -> bool:
     """Placeholder for content safety check (e.g., using Gemini moderation)."""
-    # In production, this would use a dedicated API call or a pre-configured check
-    # For now, we assume content is safe.
-    return True 
+    return True
 
 def format_ai_response(raw_response: Dict[str, Any]) -> Dict[str, Any]:
     """Format AI response for frontend/logging."""
@@ -79,6 +73,22 @@ def format_ai_response(raw_response: Dict[str, Any]) -> Dict[str, Any]:
 def get_user_rate_limit(user) -> AIRateLimit:
     """Get or create the user's rate limit entry."""
     rate_limit, _ = AIRateLimit.objects.get_or_create(user=user)
-    # Ensure limits are up-to-date before checking
     rate_limit.reset_if_needed()
     return rate_limit
+
+# --- Gemini Multimodal Content Utility ---
+
+def _prepare_gemini_content(file_path: str, prompt: str) -> List[dict]:
+    """
+    Prepare multimodal content for Gemini (audio/video/text).
+    NOTE: Requires actual file upload logic for production.
+    """
+    # Mock uploaded file reference (replace with real file upload logic)
+    file_reference = "<uploaded_file_reference>"
+
+    # Gemini now expects a list of 'parts', each part is a dict with text or file
+    parts = [{"type": "text", "text": file_reference}]
+
+    user_part = {"role": "user", "content": [{"type": "text", "text": prompt}]}
+
+    return [user_part, {"role": "system", "content": parts}]

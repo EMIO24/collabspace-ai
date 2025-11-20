@@ -1,0 +1,4 @@
+ERROR 2025-11-19 17:01:56,938 log 5526 140099005179584 Internal Server Error: /api/auth/register/
+ERROR 2025-11-19 18:24:27,960 log 5685 139755342788288 Internal Server Error: /api/auth/register/
+ERROR 2025-11-19 18:52:19,519 log 6193 139912217011904 Internal Server Error: /api/auth/register/
+ERROR 2025-11-19 19:34:17,967 log 6402 140135420044992 Internal Server Error: /api/auth/register/

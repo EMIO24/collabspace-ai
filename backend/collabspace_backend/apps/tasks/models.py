@@ -14,11 +14,12 @@ from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
 # Assuming these are imported from apps.core.models
-# from apps.core.models import BaseModel, TimeStampedModel 
+# If you eventually merge these, ensure you update the imports.
 class BaseModel(models.Model):
     is_active = models.BooleanField(default=True)
     class Meta:
         abstract = True
+        
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -56,7 +57,7 @@ class TaskManager(models.Manager):
         return self.filter(parent_task__isnull=True, is_active=True)
 
 
-class Task(BaseModel):
+class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
     """
     Core Task model with comprehensive project management features.
     Supports subtasks, dependencies, time tracking, checklist and rich metadata.
@@ -193,7 +194,7 @@ class Task(BaseModel):
     objects = TaskManager()
     
     class Meta:
-        ordering = ['position', '-created_at']
+        ordering = ['position', '-created_at'] # ✅ 'created_at' is now available
         indexes = [
             models.Index(fields=['project', 'status']),
             models.Index(fields=['assigned_to', 'status']),
@@ -554,7 +555,7 @@ class TaskDependency(models.Model):
         super().save(*args, **kwargs)
 
 
-class TaskComment(BaseModel):
+class TaskComment(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
     # ... (TaskComment implementation remains the same) ...
     task = models.ForeignKey(
         Task,
@@ -591,9 +592,9 @@ class TaskComment(BaseModel):
     )
     
     class Meta:
-        ordering = ['created_at']
+        ordering = ['created_at'] # ✅ 'created_at' is now available
         indexes = [
-            models.Index(fields=['task', 'created_at']),
+            models.Index(fields=['task']),
             models.Index(fields=['user']),
             models.Index(fields=['parent_comment']),
         ]
@@ -636,7 +637,7 @@ class TaskComment(BaseModel):
     
     def is_edited(self) -> bool:
         """Check if comment has been edited."""
-        return self.updated_at > self.created_at
+        return self.updated_at > self.created_at # ✅ 'updated_at' is now available
     
     def extract_mentions(self) -> List[str]:
         """Extract @mentions from content."""
@@ -812,7 +813,7 @@ class TimeEntry(TimeStampedModel):
 # NEW MODEL: TaskTemplate
 # ============================================================================
 
-class TaskTemplate(BaseModel):
+class TaskTemplate(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
     """
     Reusable task templates for common task types.
     Users can create templates and instantiate tasks from them.

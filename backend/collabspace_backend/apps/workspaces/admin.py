@@ -18,7 +18,8 @@ WorkspaceInvitation = apps.get_model("workspaces", "WorkspaceInvitation")
 
 @admin.register(Workspace)
 class WorkspaceAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "owner", "plan_type", "is_public", "member_count", "created_at")
+    # Added "slug" to list_display as it is a key identifier used in search and export.
+    list_display = ("id", "name", "slug", "owner", "plan_type", "is_public", "member_count", "created_at")
     search_fields = ("name", "slug", "owner__username", "owner__email")
     list_filter = ("plan_type", "is_public", "created_at")
     readonly_fields = ("member_count",)
@@ -97,7 +98,8 @@ class WorkspaceAdmin(admin.ModelAdmin):
 class WorkspaceMemberAdmin(admin.ModelAdmin):
     list_display = ("id", "workspace", "user", "role", "joined_at", "is_active")
     search_fields = ("user__username", "user__email", "workspace__name")
-    list_filter = ("role", "is_active", "joined_at")
+    # Added "workspace" to list_filter to allow filtering members by the workspace they belong to.
+    list_filter = ("workspace", "role", "is_active", "joined_at")
 
 
 @admin.register(WorkspaceInvitation)

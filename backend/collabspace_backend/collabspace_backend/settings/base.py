@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
 import cloudinary
-from environ import Env
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -128,7 +128,7 @@ REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': REDIS_URL,
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
@@ -412,22 +412,10 @@ if USE_S3:
 # ==============================================================================
 # GEMINI AI API CONFIGURATION
 # ==============================================================================
-
-OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
-OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4')
-OPENAI_MAX_TOKENS = config('OPENAI_MAX_TOKENS', default=2000, cast=int)
-
-GEMINI_API_KEY = "AIza..." 
+GEMINI_API_KEY = "AIzaSyBIUTTT58-qeIOT3tsb9Q69thJRnfxBTtM" 
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_EMBEDDING_MODEL = "text-embedding-004"
 FALLBACK_RESPONSE = "I'm sorry, the AI service is currently unavailable. Please try again shortly."
-# ==============================================================================
-# ANTHROPIC (CLAUDE) API CONFIGURATION
-# ==============================================================================
-
-ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default=None)
-ANTHROPIC_MODEL = config('ANTHROPIC_MODEL', default='claude-sonnet-4-20250514')
-ANTHROPIC_MAX_TOKENS = config('ANTHROPIC_MAX_TOKENS', default=2000, cast=int)
 
 
 # ==============================================================================
@@ -574,8 +562,8 @@ WORKSPACE_ROLES = {
 
 
 
-env = Env()
-Env.read_env() # reads .env file
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME'),

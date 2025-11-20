@@ -120,9 +120,9 @@ class Workspace(BaseModel):
         Raises:
             ValidationError: If member limit reached or user already member
         """
-        # Check if user is already a member
+        # Check if user is already an active member
         if self.is_member(user):
-            raise ValidationError(f'{user.email} is already a member of this workspace')
+            raise ValidationError(f'{user.email} is already an active member of this workspace')
         
         # Check plan limits
         if not self.can_add_member():
@@ -143,22 +143,26 @@ class Workspace(BaseModel):
     
     def remove_member(self, user):
         """
-        Remove a member from the workspace.
+        Remove a member from the workspace by setting is_active=False.
         
         Args:
             user: User instance to remove
             
         Raises:
-            ValidationError: If user is the owner or not a member
+            ValidationError: If user is the owner or not an active member
         """
         if self.is_owner(user):
             raise ValidationError('Cannot remove workspace owner')
         
-        member = WorkspaceMember.objects.filter(workspace=self, user=user).first()
+        # Filter for active member
+        member = WorkspaceMember.objects.filter(workspace=self, user=user, is_active=True).first()
         if not member:
-            raise ValidationError(f'{user.email} is not a member of this workspace')
+            raise ValidationError(f'{user.email} is not an active member of this workspace')
         
-        member.delete()
+        # Soft-delete the membership by setting is_active=False
+        member.is_active = False
+        member.save(update_fields=['is_active'])
+        
         self.update_counts()
     
     def update_member_role(self, user, new_role):
@@ -170,14 +174,15 @@ class Workspace(BaseModel):
             new_role: New role (admin/member/guest)
             
         Raises:
-            ValidationError: If trying to change owner role or user not a member
+            ValidationError: If trying to change owner role or user not an active member
         """
         if self.is_owner(user):
             raise ValidationError('Cannot change owner role')
         
-        member = WorkspaceMember.objects.filter(workspace=self, user=user).first()
+        # Filter for active member
+        member = WorkspaceMember.objects.filter(workspace=self, user=user, is_active=True).first()
         if not member:
-            raise ValidationError(f'{user.email} is not a member of this workspace')
+            raise ValidationError(f'{user.email} is not an active member of this workspace')
         
         member.role = new_role
         member.save(update_fields=['role'])
@@ -210,22 +215,22 @@ class Workspace(BaseModel):
             user: User instance
             
         Returns:
-            str: Role name or None if not a member
+            str: Role name or None if not an active member
         """
-        member = WorkspaceMember.objects.filter(workspace=self, user=user).first()
+        member = WorkspaceMember.objects.filter(workspace=self, user=user, is_active=True).first()
         return member.role if member else None
     
     def is_member(self, user):
         """
-        Check if user is a member of this workspace.
+        Check if user is an active member of this workspace.
         
         Args:
             user: User instance
             
         Returns:
-            bool: True if user is a member
+            bool: True if user is an active member
         """
-        return WorkspaceMember.objects.filter(workspace=self, user=user).exists()
+        return WorkspaceMember.objects.filter(workspace=self, user=user, is_active=True).exists()
     
     def is_owner(self, user):
         """
@@ -252,12 +257,13 @@ class Workspace(BaseModel):
         if self.is_owner(user):
             return True
         
-        member = WorkspaceMember.objects.filter(workspace=self, user=user).first()
+        # Filter for active member
+        member = WorkspaceMember.objects.filter(workspace=self, user=user, is_active=True).first()
         return member.role in ['admin', 'owner'] if member else False
     
     def update_counts(self):
-        """Update cached member and project counts."""
-        self.member_count = WorkspaceMember.objects.filter(workspace=self).count()
+        """Update cached member and project counts (only counts active members)."""
+        self.member_count = WorkspaceMember.objects.filter(workspace=self, is_active=True).count()
         # Project count will be updated when projects module is added
         # from apps.projects.models import Project
         # self.project_count = Project.objects.filter(workspace=self, is_deleted=False).count()
@@ -323,6 +329,13 @@ class WorkspaceMember(TimeStampedModel):
     
     joined_at = models.DateTimeField(auto_now_add=True)
     
+    # Status - ADDED is_active field
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text='Designates whether the membership is currently active (used for soft deletion).'
+    )
+    
     class Meta:
         db_table = 'workspace_members'
         unique_together = ['workspace', 'user']
@@ -331,6 +344,7 @@ class WorkspaceMember(TimeStampedModel):
             models.Index(fields=['workspace', 'user']),
             models.Index(fields=['workspace', 'role']),
             models.Index(fields=['user']),
+            models.Index(fields=['is_active']), # Added index for is_active
         ]
         verbose_name = 'Workspace Member'
         verbose_name_plural = 'Workspace Members'
@@ -422,6 +436,18 @@ class WorkspaceInvitation(TimeStampedModel):
     Represents an invitation for a user to join a workspace.
     """
     
+    # Status Choices for invitation lifecycle - ADDED STATUS FIELD
+    STATUS_PENDING = 'pending'
+    STATUS_ACCEPTED = 'accepted'
+    STATUS_EXPIRED = 'expired'
+    STATUS_REVOKED = 'revoked'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_ACCEPTED, 'Accepted'),
+        (STATUS_EXPIRED, 'Expired'),
+        (STATUS_REVOKED, 'Revoked'),
+    ]
+    
     # Relationships
     workspace = models.ForeignKey(
         Workspace,
@@ -453,8 +479,16 @@ class WorkspaceInvitation(TimeStampedModel):
     token = models.CharField(max_length=255, unique=True, db_index=True)
     expires_at = models.DateTimeField()
     
-    # Status
-    is_accepted = models.BooleanField(default=False)
+    # Status - Replaced is_accepted boolean field with status CharField
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+        help_text='Current status of the invitation: pending, accepted, expired, or revoked.'
+    )
+    
+    # is_accepted removed, replaced by status
     accepted_at = models.DateTimeField(null=True, blank=True)
     accepted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -471,21 +505,25 @@ class WorkspaceInvitation(TimeStampedModel):
             models.Index(fields=['workspace', 'email']),
             models.Index(fields=['token']),
             models.Index(fields=['email']),
-            models.Index(fields=['is_accepted']),
+            models.Index(fields=['status']), # Updated index to use status field
         ]
         verbose_name = 'Workspace Invitation'
         verbose_name_plural = 'Workspace Invitations'
     
     def __str__(self):
-        return f'Invitation for {self.email} to {self.workspace.name}'
+        return f'Invitation for {self.email} to {self.workspace.name} ({self.get_status_display()})'
     
     def save(self, *args, **kwargs):
-        """Override save to generate token and set expiry."""
+        """Override save to generate token, set expiry, and auto-update status to EXPIRED."""
         if not self.token:
             self.token = self._generate_token()
         
         if not self.expires_at:
             self.expires_at = timezone.now() + timedelta(days=7)
+
+        # Auto-set status to EXPIRED if past expiry and still pending
+        if self.status == self.STATUS_PENDING and timezone.now() > self.expires_at:
+            self.status = self.STATUS_EXPIRED
         
         super().save(*args, **kwargs)
     
@@ -501,11 +539,13 @@ class WorkspaceInvitation(TimeStampedModel):
         Check if invitation is still valid.
         
         Returns:
-            bool: True if invitation is valid (not expired and not accepted)
+            bool: True if invitation is valid (status is pending and not expired)
         """
-        if self.is_accepted:
+        # Only pending invitations can be valid
+        if self.status != self.STATUS_PENDING:
             return False
         
+        # Check expiry
         if timezone.now() > self.expires_at:
             return False
         
@@ -514,8 +554,6 @@ class WorkspaceInvitation(TimeStampedModel):
     def send_invitation_email(self):
         """
         Send invitation email to the invitee.
-        
-        This method should be called after creating the invitation.
         """
         from apps.authentication.utils import send_email_template
         
@@ -552,7 +590,8 @@ class WorkspaceInvitation(TimeStampedModel):
             ValidationError: If invitation is invalid or email doesn't match
         """
         if not self.is_valid():
-            raise ValidationError('This invitation has expired or has already been accepted')
+            # If not valid, the status must be accepted, expired, or revoked
+            raise ValidationError('This invitation has expired, been accepted, or revoked.')
         
         if user.email.lower() != self.email.lower():
             raise ValidationError('This invitation is for a different email address')
@@ -561,20 +600,29 @@ class WorkspaceInvitation(TimeStampedModel):
         self.workspace.add_member(user, role=self.role, invited_by=self.invited_by)
         
         # Mark invitation as accepted
-        self.is_accepted = True
+        self.status = self.STATUS_ACCEPTED
         self.accepted_at = timezone.now()
         self.accepted_by = user
-        self.save(update_fields=['is_accepted', 'accepted_at', 'accepted_by'])
+        self.save(update_fields=['status', 'accepted_at', 'accepted_by'])
     
     def cancel(self):
-        """Cancel the invitation by deleting it."""
-        self.delete()
+        """Revoke the invitation and update status (for audit trail)."""
+        self.status = self.STATUS_REVOKED
+        self.save(update_fields=['status'])
     
     @property
     def is_expired(self):
         """Check if invitation has expired."""
-        return timezone.now() > self.expires_at
+        return self.status == self.STATUS_EXPIRED or timezone.now() > self.expires_at
     
+    @property
+    def is_accepted(self):
+        """
+        Convenience property to check acceptance status.
+        Replaces the old boolean field.
+        """
+        return self.status == self.STATUS_ACCEPTED
+
     @property
     def days_until_expiry(self):
         """Get number of days until invitation expires."""

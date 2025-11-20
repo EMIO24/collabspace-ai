@@ -1,7 +1,7 @@
 import uuid
 from rest_framework import serializers
 from .models import AIUsage, AIPromptTemplate, AIRateLimit
-from ..utils import estimate_tokens # Use local utility
+from .utils import estimate_tokens # Use local utility
 
 
 # --- Model Serializers ---

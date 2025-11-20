@@ -5,6 +5,7 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from apps.core.models import TimeStampedModel
 from django.core.serializers.json import DjangoJSONEncoder
 
 # Custom imports (assuming User/Workspace models exist in the core app)
@@ -18,46 +19,89 @@ except Exception:
     Workspace = models.ForeignKey(DummyWorkspace, on_delete=models.SET_NULL, null=True, blank=True)
 
 
-class AIUsage(models.Model):
-    """Tracks every individual AI request made for billing and quota management."""
+class AIUsage(TimeStampedModel):
+    """
+    Tracks every individual AI request made for billing and quota management.
+    """
     
+    # Primary key
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
     # Relationships
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ai_usages')
-    workspace = Workspace
+    # Using settings.AUTH_USER_MODEL for robust user reference
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='ai_usages',
+        help_text='The user who initiated the AI feature use.'
+    )
+    
+    # Correct lazy reference to the Workspace model
+    workspace = models.ForeignKey(
+        'workspaces.Workspace',
+        on_delete=models.CASCADE,
+        related_name='ai_usages',
+        help_text='The workspace associated with this usage event.'
+    )
     
     # Request Metadata
-    feature_type = models.CharField(max_length=50, help_text="e.g., task_ai, meeting_ai, analytics_ai")
-    provider = models.CharField(max_length=50, default='gemini')
+    feature_type = models.CharField(
+        max_length=50, 
+        help_text="e.g., task_ai, meeting_ai, analytics_ai",
+        db_index=True
+    )
+    provider = models.CharField(max_length=50, default='gemini', db_index=True)
     model_used = models.CharField(max_length=50, help_text="e.g., gemini-1.5-flash, gemini-1.5-pro")
     
     # Token and Time Tracking (Estimated for free tiers)
     prompt_tokens = models.IntegerField(default=0)
     completion_tokens = models.IntegerField(default=0)
     total_tokens = models.IntegerField(default=0)
-    processing_time = models.FloatField(null=True, blank=True, help_text="Seconds taken for the API call")
+    processing_time = models.FloatField(
+        null=True, 
+        blank=True, 
+        help_text="Seconds taken for the API call"
+    )
     
     # Data Storage (Truncated for privacy/storage limits)
-    request_data = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
-    response_data = models.JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
+    request_data = models.JSONField(
+        encoder=DjangoJSONEncoder, 
+        null=True, 
+        blank=True,
+        help_text="Truncated request payload sent to the AI provider."
+    )
+    response_data = models.JSONField(
+        encoder=DjangoJSONEncoder, 
+        null=True, 
+        blank=True,
+        help_text="Truncated response payload received from the AI provider."
+    )
     
     # Status
-    success = models.BooleanField(default=False)
+    success = models.BooleanField(default=False, db_index=True)
     error_message = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
+    # created_at is provided by TimeStampedModel base class
+    
     class Meta:
+        db_table = 'ai_usages'
         verbose_name = "AI Usage Log"
         verbose_name_plural = "AI Usage Logs"
-        ordering = ['-created_at']
+        # Ordering is managed by TimeStampedModel (uses created_at)
+        ordering = ['-created_at'] 
         # Efficiently query usage by user and feature type
         indexes = [
+            # Check usage over time for a specific user
             models.Index(fields=['user', 'created_at']),
+            # Check feature performance and success rate
             models.Index(fields=['feature_type', 'success']),
+            # Allow quick lookups by model and provider
+            models.Index(fields=['provider', 'model_used']),
         ]
 
     def estimate_cost(self):
         """Calculate estimated cost (currently zero for free tier tracking)."""
-        # In a real app, this would use a complex tiered pricing logic
+        # In a real app, this would use a complex tiered pricing logic based on 
+        # self.provider, self.model_used, and self.total_tokens.
         return 0.00 
     
     def __str__(self):
@@ -114,8 +158,11 @@ class AIRateLimit(models.Model):
     via a standardized 'cost' unit.
     """
     
-    # Assuming User is the imported custom user model
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='ai_rate_limit')
+    user = models.OneToOneField(
+                                'authentication.User',  # Use the string reference to avoid import-time issues
+                                on_delete=models.CASCADE,
+                                related_name='ai_rate_limit'
+                                )
     
     # Daily Limits (Reset nightly)
     plan_type = models.CharField(max_length=20, default='free', choices=[('free', 'Free'), ('pro', 'Pro'), ('enterprise', 'Enterprise')])
