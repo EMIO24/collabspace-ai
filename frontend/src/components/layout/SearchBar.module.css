@@ -1,0 +1,4 @@
+.form { display:flex; align-items:center; gap:6px; background:var(--gray-50); padding:6px 8px; border-radius:10px; min-width:320px; }
+.input { border:none; background:transparent; outline:none; padding:6px; font-size:0.95rem; color:var(--gray-800); width:100%; }
+.btn { background:transparent; border:none; padding:6px; cursor:pointer; color:var(--gray-600); border-radius:8px; }
+@media (max-width:840px) { .form { min-width:200px; } }
