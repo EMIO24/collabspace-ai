@@ -37,3 +37,7 @@ INFO 2025-11-19 19:30:48,394 autoreload 6402 140135572127872 Watching for file c
 WARNING 2025-11-19 19:32:11,983 basehttp 6402 140135420044992 "POST /api/auth/register/ HTTP/1.1" 400 193
 WARNING 2025-11-19 19:33:31,945 basehttp 6402 140135420044992 "POST /api/auth/register/ HTTP/1.1" 400 250
 ERROR 2025-11-19 19:34:17,969 basehttp 6402 140135420044992 "POST /api/auth/register/ HTTP/1.1" 500 124
+INFO 2025-11-20 12:29:22,339 autoreload 6402 140135572127872 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/settings/base.py changed, reloading.
+INFO 2025-11-20 12:29:30,244 autoreload 8950 140173655888000 Watching for file changes with StatReloader
+INFO 2025-11-20 12:29:37,720 autoreload 8950 140173655888000 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/settings/base.py changed, reloading.
+INFO 2025-11-20 12:29:40,556 autoreload 8955 140215773651072 Watching for file changes with StatReloader
