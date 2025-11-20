@@ -1,0 +1,19 @@
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--primary-600);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.text {
+  font-weight: 600;
+}

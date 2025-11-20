@@ -1,0 +1,19 @@
+.header {
+  background: var(--white, #fff);
+  border-bottom: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  padding: 0.5rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.nav {
+  margin-left: 1rem;
+  display: flex;
+  gap: 1rem;
+}
+.right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
