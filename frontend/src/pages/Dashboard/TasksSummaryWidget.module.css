@@ -1,0 +1,61 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.statCard {
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid var(--gray-200);
+}
+
+.statValue {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--primary-600);
+}
+
+.statLabel {
+  font-size: 0.9rem;
+  color: var(--gray-500);
+}
+
+.overdueCard {
+  background: var(--error-light);
+}
+
+.overdueCard .statValue {
+  color: var(--error);
+}
+
+/* Loading Skeleton Styles */
+.skeleton {
+  min-height: 80px;
+  background-color: var(--gray-200);
+  background-image: linear-gradient(
+    90deg,
+    var(--gray-200),
+    var(--gray-100),
+    var(--gray-200)
+  );
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite linear;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.error {
+  color: var(--error);
+  padding: 1rem;
+  text-align: center;
+}

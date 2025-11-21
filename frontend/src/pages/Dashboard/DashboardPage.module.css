@@ -1,0 +1,87 @@
+.dashboard {
+  padding: var(--spacing-lg);
+}
+
+.header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.greeting {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0;
+}
+
+.tagline {
+  font-size: 1rem;
+  color: var(--gray-500);
+  margin: 0.25rem 0 0;
+}
+
+.mainGrid {
+  display: grid;
+  /* Define grid areas for easier layout management across screen sizes */
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: auto;
+  grid-template-areas:
+    "tasks tasks tasks tasks projects projects projects projects . . . ."
+    "analytics analytics analytics analytics feed feed feed feed feed feed feed feed"
+    "upcoming upcoming upcoming upcoming members members members members . . . .";
+  gap: var(--spacing-lg);
+}
+
+/* Mapping widgets to grid areas defined above */
+.tasksSummary { grid-area: tasks; }
+.projectsWidget { grid-area: projects; }
+.analyticsWidget { 
+  grid-area: analytics; 
+  /* Make analytics span multiple rows to look like a main panel */
+  grid-row: span 2; 
+  /* Reset grid-area for mobile/smaller screens below */
+}
+.activityFeedWidget { 
+  grid-area: feed;
+  grid-row: span 2; 
+}
+.upcomingWidget { grid-area: upcoming; }
+.teamMembersWidget { grid-area: members; }
+
+
+/* --- Responsive Adjustments --- */
+
+/* Tablet/Smaller Desktop Layout (e.g., 1024px and below) */
+@media (max-width: 1200px) {
+  .mainGrid {
+    /* Adjust columns to make space for more content per row */
+    grid-template-areas:
+      "tasks tasks tasks projects projects projects"
+      "analytics analytics analytics analytics feed feed"
+      "upcoming upcoming upcoming members members members";
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Mobile Layout (e.g., 768px and below) */
+@media (max-width: 768px) {
+  .dashboard {
+    padding: var(--spacing-md);
+  }
+  
+  .mainGrid {
+    /* Stack all widgets in a single column */
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "tasks"
+      "projects"
+      "analytics"
+      "feed"
+      "upcoming"
+      "members";
+  }
+
+  /* Ensure all widgets span one column and one row */
+  .analyticsWidget, .activityFeedWidget {
+    grid-row: auto;
+  }
+}
