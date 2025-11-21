@@ -1,0 +1,64 @@
+.container {
+  padding: var(--spacing-lg) 0;
+}
+
+.header {
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  color: var(--gray-900);
+}
+
+.description {
+  color: var(--gray-600);
+  margin-top: 5px;
+  margin-bottom: var(--spacing-md);
+}
+
+.settingsBtn {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 150ms;
+}
+
+.settingsBtn:hover {
+  background: var(--gray-200);
+}
+
+.stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.statCard {
+  flex: 1;
+  background: white;
+  padding: var(--spacing-lg);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.statCard h3 {
+  font-size: 1.5rem;
+  color: var(--primary-600);
+}
+
+.statCard p {
+  color: var(--gray-500);
+  font-size: 0.9rem;
+}
+
+.membersSection h2 {
+  margin-bottom: var(--spacing-md);
+  color: var(--gray-800);
+}

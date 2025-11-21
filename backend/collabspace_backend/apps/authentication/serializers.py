@@ -22,7 +22,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name',
-            'full_name', 'avatar', 'bio', 'location', 'timezone',
+            'full_name', 'avatar', 'bio', 'location', 'user_timezone',
             'phone_number', 'is_email_verified', 'two_factor_enabled',
             'plan_type', 'date_joined', 'last_login', 'last_activity'
         ]

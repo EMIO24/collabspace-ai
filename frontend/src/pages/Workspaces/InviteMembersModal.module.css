@@ -1,0 +1,151 @@
+.modalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  padding: var(--spacing-xl);
+  width: 90%;
+  max-width: 600px;
+  box-shadow: var(--shadow-xl);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--gray-100);
+  padding-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.header h2 {
+    font-size: 1.5rem;
+    color: var(--gray-800);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--gray-500);
+}
+
+.formGroup {
+  margin-bottom: var(--spacing-md);
+}
+
+.formGroup label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: var(--gray-700);
+}
+
+.emailInputGroup {
+  display: flex;
+  gap: 10px;
+}
+
+.emailInputGroup input {
+  flex-grow: 1;
+  padding: 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+}
+
+.addEmailBtn {
+  background: var(--secondary-500);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 150ms;
+}
+
+.addEmailBtn:hover {
+    background: var(--secondary-600);
+}
+
+.tagContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 40px;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  margin-bottom: var(--spacing-lg);
+}
+
+.emailTag {
+  background: var(--primary-100);
+  color: var(--primary-700);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.emailTag button {
+  background: none;
+  border: none;
+  color: var(--primary-700);
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.noEmails {
+  color: var(--gray-500);
+  padding: 4px 8px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--gray-100);
+}
+
+.cancelBtn {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.submitBtn {
+  background: var(--primary-600);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.submitBtn:disabled {
+  background: var(--gray-400);
+  cursor: not-allowed;
+}

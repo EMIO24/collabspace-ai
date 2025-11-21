@@ -41,3 +41,33 @@ INFO 2025-11-20 12:29:22,339 autoreload 6402 140135572127872 /mnt/c/Users/user/c
 INFO 2025-11-20 12:29:30,244 autoreload 8950 140173655888000 Watching for file changes with StatReloader
 INFO 2025-11-20 12:29:37,720 autoreload 8950 140173655888000 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/settings/base.py changed, reloading.
 INFO 2025-11-20 12:29:40,556 autoreload 8955 140215773651072 Watching for file changes with StatReloader
+WARNING 2025-11-21 10:51:20,429 basehttp 8955 140215621428928 "POST /api/auth/register/ HTTP/1.1" 400 332
+ERROR 2025-11-21 11:23:20,617 basehttp 8955 140215621428928 "POST /api/auth/register/ HTTP/1.1" 500 124
+INFO 2025-11-21 11:26:04,724 autoreload 8955 140215773651072 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/authentication/utils.py changed, reloading.
+INFO 2025-11-21 11:26:14,758 autoreload 11202 140354603540608 Watching for file changes with StatReloader
+WARNING 2025-11-21 11:26:31,198 basehttp 11202 140354451842752 "POST /api/auth/register/ HTTP/1.1" 400 332
+WARNING 2025-11-21 11:26:45,391 basehttp 11202 140354451842752 "POST /api/auth/register/ HTTP/1.1" 400 193
+ERROR 2025-11-21 11:27:03,241 basehttp 11202 140354451842752 "POST /api/auth/register/ HTTP/1.1" 500 101
+INFO 2025-11-21 11:27:29,349 autoreload 11202 140354603540608 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/authentication/utils.py changed, reloading.
+INFO 2025-11-21 11:27:32,264 autoreload 11224 140148897419392 Watching for file changes with StatReloader
+ERROR 2025-11-21 11:27:51,569 basehttp 11224 140148675180224 "POST /api/auth/register/ HTTP/1.1" 500 106
+INFO 2025-11-21 11:32:40,279 autoreload 11224 140148897419392 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/authentication/utils.py changed, reloading.
+INFO 2025-11-21 11:32:43,356 autoreload 11269 140709826953344 Watching for file changes with StatReloader
+INFO 2025-11-21 11:43:09,892 autoreload 11269 140709826953344 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/collabspace_backend/settings/development.py changed, reloading.
+INFO 2025-11-21 11:43:14,970 autoreload 11323 139629572989056 Watching for file changes with StatReloader
+ERROR 2025-11-21 11:43:39,473 basehttp 11323 139629420259008 "POST /api/auth/register/ HTTP/1.1" 500 179
+INFO 2025-11-21 11:50:55,612 autoreload 11323 139629572989056 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/authentication/serializers.py changed, reloading.
+INFO 2025-11-21 11:50:59,538 autoreload 11355 140405135945856 Watching for file changes with StatReloader
+INFO 2025-11-21 12:01:18,452 basehttp 11355 140404983768768 "POST /api/auth/register/ HTTP/1.1" 201 1104
+INFO 2025-11-21 12:02:37,435 basehttp 11355 140404973278912 "POST /api/auth/login/ HTTP/1.1" 200 1297
+WARNING 2025-11-21 12:03:05,289 basehttp 11355 140404973278912 "GET /api/auth/me/ HTTP/1.1" 404 10916
+WARNING 2025-11-21 12:04:40,113 basehttp 11355 140404762605248 "POST /api/auth/token/refresh/ HTTP/1.1" 404 10950
+WARNING 2025-11-21 12:04:48,918 basehttp 11355 140404762605248 "POST /api/auth/token/refresh/ HTTP/1.1" 404 10950
+WARNING 2025-11-21 12:05:02,937 basehttp 11355 140404762605248 "POST /api/auth/logout/ HTTP/1.1" 401 201
+WARNING 2025-11-21 12:05:50,708 basehttp 11355 140404762605248 "POST /api/auth/logout/ HTTP/1.1" 401 201
+WARNING 2025-11-21 12:06:13,112 basehttp 11355 140404762605248 "GET /api/core/health/ HTTP/1.1" 401 90
+WARNING 2025-11-21 12:06:33,604 basehttp 11355 140404762605248 "GET /api/core/version/ HTTP/1.1" 401 90
+WARNING 2025-11-21 12:06:44,060 basehttp 11355 140404762605248 "POST /api/workspaces/ HTTP/1.1" 401 201
+INFO 2025-11-21 12:06:56,009 basehttp 11355 140404762605248 "POST /api/auth/login/ HTTP/1.1" 200 1297
+WARNING 2025-11-21 12:07:02,600 basehttp 11355 140404762605248 "POST /api/workspaces/ HTTP/1.1" 401 201
+INFO 2025-11-21 12:30:26,378 autoreload 11523 139977780252800 Watching for file changes with StatReloader
