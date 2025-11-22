@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import styles from './MembersList.module.css';
-import InviteMembersModal from './InviteMembersModal';
+import InviteMembersModal from '../../pages/Workspaces/InviteMembersModal';
 
 export default function MembersList({ members, workspaceId }) {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
