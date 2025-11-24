@@ -344,7 +344,7 @@ class WorkspaceMember(TimeStampedModel):
             models.Index(fields=['workspace', 'user']),
             models.Index(fields=['workspace', 'role']),
             models.Index(fields=['user']),
-            models.Index(fields=['is_active']), # Added index for is_active
+            models.Index(fields=['is_active']),
         ]
         verbose_name = 'Workspace Member'
         verbose_name_plural = 'Workspace Members'
@@ -436,7 +436,7 @@ class WorkspaceInvitation(TimeStampedModel):
     Represents an invitation for a user to join a workspace.
     """
     
-    # Status Choices for invitation lifecycle - ADDED STATUS FIELD
+    # Status Choices for invitation lifecycle
     STATUS_PENDING = 'pending'
     STATUS_ACCEPTED = 'accepted'
     STATUS_EXPIRED = 'expired'
@@ -479,7 +479,7 @@ class WorkspaceInvitation(TimeStampedModel):
     token = models.CharField(max_length=255, unique=True, db_index=True)
     expires_at = models.DateTimeField()
     
-    # Status - Replaced is_accepted boolean field with status CharField
+    # Status
     status = models.CharField(
         max_length=15,
         choices=STATUS_CHOICES,
@@ -488,7 +488,6 @@ class WorkspaceInvitation(TimeStampedModel):
         help_text='Current status of the invitation: pending, accepted, expired, or revoked.'
     )
     
-    # is_accepted removed, replaced by status
     accepted_at = models.DateTimeField(null=True, blank=True)
     accepted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -505,7 +504,7 @@ class WorkspaceInvitation(TimeStampedModel):
             models.Index(fields=['workspace', 'email']),
             models.Index(fields=['token']),
             models.Index(fields=['email']),
-            models.Index(fields=['status']), # Updated index to use status field
+            models.Index(fields=['status']),
         ]
         verbose_name = 'Workspace Invitation'
         verbose_name_plural = 'Workspace Invitations'
@@ -555,29 +554,51 @@ class WorkspaceInvitation(TimeStampedModel):
         """
         Send invitation email to the invitee.
         """
-        from apps.authentication.utils import send_email_template
+        from django.core.mail import send_mail
         
         # Construct invitation URL
         invitation_url = f"{settings.FRONTEND_URL}/invitations/accept?token={self.token}"
         
-        context = {
-            'workspace_name': self.workspace.name,
-            'invited_by_name': self.invited_by.get_full_name(),
-            'invitation_url': invitation_url,
-            'role': self.get_role_display(),
-            'expires_at': self.expires_at.strftime('%B %d, %Y'),
-        }
+        # Get inviter name
+        invited_by_name = self.invited_by.get_full_name() if hasattr(self.invited_by, 'get_full_name') and self.invited_by.get_full_name() else self.invited_by.email
         
-        # This is a placeholder - implement actual email sending
-        # send_email_template(
-        #     to_email=self.email,
-        #     subject=f'Invitation to join {self.workspace.name}',
-        #     template='workspace_invitation.html',
-        #     context=context
-        # )
+        # Email subject
+        subject = f"You've been invited to join workspace: {self.workspace.name}"
         
-        print(f"📧 Invitation email would be sent to {self.email}")
-        print(f"   URL: {invitation_url}")
+        # Email body with actual link and token
+        message = f"""Hello,
+
+{invited_by_name} has invited you to join the workspace '{self.workspace.name}' on CollabSpace.
+
+Your assigned role will be: {self.get_role_display()}
+
+ACCEPT INVITATION:
+Click this link to accept: {invitation_url}
+
+Or use this invitation token in the app: {self.token}
+
+This invitation expires on: {self.expires_at.strftime('%B %d, %Y')}
+
+If you did not expect this invitation, you can safely ignore this email.
+
+Best regards,
+The CollabSpace Team
+"""
+        
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[self.email],
+                fail_silently=False,
+            )
+            print(f"📧 Invitation email sent to {self.email}")
+            print(f"   Token: {self.token}")
+            print(f"   URL: {invitation_url}")
+        except Exception as e:
+            print(f"❌ Failed to send invitation email to {self.email}: {e}")
+            # Don't raise the exception - email failure shouldn't break invitation creation
     
     def accept(self, user):
         """
@@ -631,3 +652,109 @@ class WorkspaceInvitation(TimeStampedModel):
         
         delta = self.expires_at - timezone.now()
         return delta.days
+
+        
+class WorkspaceActivity(TimeStampedModel):
+    """
+    Workspace activity log model.
+    
+    Tracks all activities and events within a workspace for audit trail and feeds.
+    """
+    
+    # Activity Types
+    ACTION_WORKSPACE_CREATED = 'workspace_created'
+    ACTION_WORKSPACE_UPDATED = 'workspace_updated'
+    ACTION_MEMBER_ADDED = 'member_added'
+    ACTION_MEMBER_REMOVED = 'member_removed'
+    ACTION_MEMBER_ROLE_CHANGED = 'member_role_changed'
+    ACTION_PROJECT_CREATED = 'project_created'
+    ACTION_PROJECT_UPDATED = 'project_updated'
+    ACTION_PROJECT_DELETED = 'project_deleted'
+    ACTION_INVITATION_SENT = 'invitation_sent'
+    ACTION_INVITATION_ACCEPTED = 'invitation_accepted'
+    
+    ACTION_CHOICES = [
+        (ACTION_WORKSPACE_CREATED, 'Workspace Created'),
+        (ACTION_WORKSPACE_UPDATED, 'Workspace Updated'),
+        (ACTION_MEMBER_ADDED, 'Member Added'),
+        (ACTION_MEMBER_REMOVED, 'Member Removed'),
+        (ACTION_MEMBER_ROLE_CHANGED, 'Member Role Changed'),
+        (ACTION_PROJECT_CREATED, 'Project Created'),
+        (ACTION_PROJECT_UPDATED, 'Project Updated'),
+        (ACTION_PROJECT_DELETED, 'Project Deleted'),
+        (ACTION_INVITATION_SENT, 'Invitation Sent'),
+        (ACTION_INVITATION_ACCEPTED, 'Invitation Accepted'),
+    ]
+    
+    # Relationships
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name='activities'
+    )
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='workspace_activities',
+        help_text='User who performed the action'
+    )
+    
+    # Activity Details
+    action = models.CharField(
+        max_length=50,
+        choices=ACTION_CHOICES,
+        db_index=True
+    )
+    
+    description = models.TextField(
+        blank=True,
+        help_text='Human-readable description of the activity'
+    )
+    
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Additional context data about the activity'
+    )
+    
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    class Meta:
+        db_table = 'workspace_activities'
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['workspace', '-timestamp']),
+            models.Index(fields=['user', '-timestamp']),
+            models.Index(fields=['action']),
+        ]
+        verbose_name = 'Workspace Activity'
+        verbose_name_plural = 'Workspace Activities'
+    
+    def __str__(self):
+        return f'{self.workspace.name} - {self.get_action_display()} at {self.timestamp}'
+    
+    @classmethod
+    def log(cls, workspace, action, user=None, description='', metadata=None):
+        """
+        Convenience method to log an activity.
+        
+        Args:
+            workspace: Workspace instance
+            action: Action type (use ACTION_* constants)
+            user: User who performed the action (optional)
+            description: Human-readable description
+            metadata: Additional context data
+            
+        Returns:
+            WorkspaceActivity instance
+        """
+        return cls.objects.create(
+            workspace=workspace,
+            action=action,
+            user=user,
+            description=description,
+            metadata=metadata or {}
+        )

@@ -296,7 +296,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'username', 'first_name', 'last_name', 'avatar',
-            'bio', 'location', 'timezone', 'phone_number'
+            'bio', 'location', 'user_timezone', 'phone_number'
         ]
         extra_kwargs = {
             'username': {'required': False},

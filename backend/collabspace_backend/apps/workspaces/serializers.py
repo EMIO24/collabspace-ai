@@ -133,7 +133,7 @@ class WorkspaceDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "settings",
-            "plan",
+            "plan_type",
             "role",
             "permissions",
             "stats",
@@ -304,10 +304,12 @@ class AddMemberSerializer(serializers.Serializer):
         user_id = attrs.get("user_id")
         if not email and not user_id:
             raise serializers.ValidationError("Either 'email' or 'user_id' is required to add a member.")
+        
         request = self.context.get("request")
         workspace: Workspace = self.context.get("workspace")
         if not workspace:
             raise serializers.ValidationError("Workspace context is required.")
+        
         # resolve user if email provided
         user = None
         if email:
@@ -324,10 +326,17 @@ class AddMemberSerializer(serializers.Serializer):
             except User.DoesNotExist:
                 raise serializers.ValidationError("No user found for the provided user_id.")
             attrs["resolved_user"] = user
-        # check membership
+        
+        # check membership - ONLY CHECK FOR ACTIVE MEMBERSHIPS
         if attrs.get("resolved_user"):
-            if WorkspaceMember.objects.filter(workspace=workspace, user=attrs["resolved_user"]).exists():
+            # Check if user is already an ACTIVE member
+            if WorkspaceMember.objects.filter(
+                workspace=workspace, 
+                user=attrs["resolved_user"],
+                is_active=True
+            ).exists():
                 raise serializers.ValidationError("The specified user is already a member of this workspace.")
+        
         return attrs
 
     def save(self, **kwargs):
@@ -335,26 +344,42 @@ class AddMemberSerializer(serializers.Serializer):
         resolved_user = self.validated_data.get("resolved_user")
         role = self.validated_data.get("role")
         custom_permissions = self.validated_data.get("custom_permissions")
+        
         # if resolved_user is None, create an invitation
         if resolved_user is None:
-            # create invitation record
+            # Create invitation record
             invitation = WorkspaceInvitation.objects.create(
                 workspace=workspace,
                 email=self.validated_data.get("email"),
                 role=role,
                 invited_by=self.context["request"].user,
-                custom_permissions=custom_permissions,
             )
             return invitation
-        # otherwise create membership
+        
+        # Check if user was previously a member but inactive
+        existing_member = WorkspaceMember.objects.filter(
+            workspace=workspace,
+            user=resolved_user
+        ).first()
+        
+        if existing_member:
+            # Reactivate the membership
+            existing_member.is_active = True
+            existing_member.role = role
+            if custom_permissions:
+                existing_member.permissions = custom_permissions
+            existing_member.save()
+            return existing_member
+        
+        # Otherwise create new membership
         member = WorkspaceMember.objects.create(
             workspace=workspace,
             user=resolved_user,
             role=role,
             permissions=custom_permissions or {},
+            invited_by=self.context["request"].user,
         )
         return member
-
 
 class UpdateMemberRoleSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=[(r, r) for r in _get_allowed_roles()])
@@ -419,34 +444,40 @@ class WorkspaceInvitationSerializer(serializers.ModelSerializer):
 class SendInvitationSerializer(serializers.Serializer):
     email = serializers.EmailField()
     role = serializers.ChoiceField(choices=[(r, r) for r in _get_allowed_roles()])
-    message = serializers.CharField(required=False, allow_blank=True)
 
     def validate_email(self, value: str) -> str:
-        # check already a member
         workspace: Workspace = self.context.get("workspace")
         if not workspace:
             raise serializers.ValidationError("Workspace context is required.")
+        
+        # Check if user exists and is already a member
         if User.objects.filter(email__iexact=value).exists():
             user = User.objects.get(email__iexact=value)
-            if WorkspaceMember.objects.filter(workspace=workspace, user=user).exists():
+            if WorkspaceMember.objects.filter(workspace=workspace, user=user, is_active=True).exists():
                 raise serializers.ValidationError("This email belongs to a user who is already a member of the workspace.")
-        # check already invited
-        if WorkspaceInvitation.objects.filter(workspace=workspace, email__iexact=value, status__in=("pending",)).exists():
+        
+        # Check for existing pending invitations
+        if WorkspaceInvitation.objects.filter(
+            workspace=workspace, 
+            email__iexact=value, 
+            status='pending'
+        ).exists():
             raise serializers.ValidationError("An invitation has already been sent to this email for this workspace.")
+        
         return value
 
     def save(self, **kwargs):
         workspace: Workspace = self.context["workspace"]
         inviter = self.context["request"].user
+        
+        # Create invitation with only the fields that exist in the model
         invite = WorkspaceInvitation.objects.create(
             workspace=workspace,
             email=self.validated_data["email"],
             role=self.validated_data["role"],
-            message=self.validated_data.get("message", ""),
             invited_by=inviter,
         )
         return invite
-
 
 class AcceptInvitationSerializer(serializers.Serializer):
     token = serializers.CharField()
@@ -537,3 +568,20 @@ class WorkspaceStatsReadSerializer(serializers.Serializer):
 
     def get_storage_used(self, obj: Workspace) -> int:
         return getattr(obj, "storage_used", 0) or 0
+
+class WorkspaceActivitySerializer(serializers.Serializer):
+    """Serializer for workspace activity logs"""
+    id = serializers.UUIDField(read_only=True)
+    action = serializers.CharField(read_only=True)
+    timestamp = serializers.DateTimeField(read_only=True)
+    user = MinimalUserSerializer(read_only=True)
+    details = serializers.JSONField(read_only=True)
+
+
+class WorkspaceSearchSerializer(serializers.Serializer):
+    """Serializer for search results"""
+    type = serializers.CharField(read_only=True)
+    id = serializers.UUIDField(read_only=True)
+    title = serializers.CharField(read_only=True)
+    excerpt = serializers.CharField(read_only=True)
+    url = serializers.CharField(read_only=True)

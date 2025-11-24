@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 from django.apps import apps
 from django.conf import settings
+from django.core.exceptions import ValidationError  
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
@@ -17,7 +18,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-# Import serializers (assumed to exist in apps.workspaces.serializers)
+
 try:
     from .serializers import (
         WorkspaceListSerializer,
@@ -25,19 +26,23 @@ try:
         WorkspaceCreateSerializer,
         WorkspaceUpdateSerializer,
         WorkspaceMemberSerializer,
-        WorkspaceMemberCreateSerializer,
+        AddMemberSerializer,  
         WorkspaceInvitationSerializer,
-        WorkspaceInvitationCreateSerializer,
+        SendInvitationSerializer,  
+        WorkspaceStatsReadSerializer, 
         WorkspaceActivitySerializer,
-        WorkspaceStatsSerializer,
         WorkspaceSearchSerializer,
     )
-except Exception:  # pragma: no cover - allow fallback for projects that name serializers differently
-    WorkspaceListSerializer = WorkspaceDetailSerializer = WorkspaceCreateSerializer = WorkspaceUpdateSerializer = None
-    WorkspaceMemberSerializer = WorkspaceMemberCreateSerializer = None
-    WorkspaceInvitationSerializer = WorkspaceInvitationCreateSerializer = None
-    WorkspaceActivitySerializer = WorkspaceStatsSerializer = WorkspaceSearchSerializer = None
 
+
+    WorkspaceMemberCreateSerializer = AddMemberSerializer
+    WorkspaceInvitationCreateSerializer = SendInvitationSerializer
+    WorkspaceStatsSerializer = WorkspaceStatsReadSerializer
+    WorkspaceActivitySerializer = WorkspaceActivitySerializer 
+    WorkspaceSearchSerializer = WorkspaceSearchSerializer  
+except ImportError as e:
+    print(f"Serializer import error: {e}")
+    raise
 
 # -----------------------------
 # Helper permissions
@@ -152,35 +157,42 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def create(self, request: Request, *args, **kwargs) -> Response:
-        """Create a workspace and make the request user the owner.
-
-        - Owner set to current user
-        - Owner membership created
-        - (Optional) send confirmation email/notification
-        """
+        """Create a workspace and make the request user the owner."""
         Workspace = apps.get_model("workspaces", "Workspace")
         WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        
         # create workspace
         workspace = Workspace.objects.create(owner=request.user, **data)
-        # create owner membership
-        try:
-            WorkspaceMember.objects.create(workspace=workspace, user=request.user, role="owner")
-        except IntegrityError:
-            # membership already exists — ignore
-            pass
-        # optional: send confirmation (placeholder)
+        
+        # create owner membership with is_active=True
+        membership, created = WorkspaceMember.objects.get_or_create(
+            workspace=workspace,
+            user=request.user,
+            defaults={'role': 'owner', 'is_active': True}
+        )
+        
+        # If membership existed but was inactive, reactivate it
+        if not created and not membership.is_active:
+            membership.is_active = True
+            membership.role = 'owner'
+            membership.save()
+        
+        # Update workspace counts
+        workspace.update_counts()
+        
         try:
             if hasattr(workspace, "send_creation_confirmation"):
                 workspace.send_creation_confirmation(request.user)
         except Exception:
-            # non-fatal
             pass
-        out_serializer = WorkspaceDetailSerializer(workspace)
+        
+        out_serializer = WorkspaceDetailSerializer(workspace, context={'request': request})
         return Response(out_serializer.data, status=status.HTTP_201_CREATED)
+
 
     def retrieve(self, request: Request, *args, **kwargs) -> Response:
         """Retrieve detailed workspace info. Membership is required."""
@@ -221,6 +233,7 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
         workspace = self.get_object()
         if not IsWorkspaceOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "You must be the workspace owner to delete it."}, status=status.HTTP_403_FORBIDDEN)
+        
         # soft delete flag
         if hasattr(workspace, "is_deleted"):
             workspace.is_deleted = True
@@ -228,21 +241,33 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
             workspace.save()
         else:
             workspace.delete()
+        
         # archive projects if model supports it
         Project = apps.get_model("projects", "Project") if apps.is_installed("apps.projects") or apps.is_installed("projects") else None
         if Project:
-            Project.objects.filter(workspace=workspace).update(is_archived=True)
+            try:
+                # Check if Project model has is_archived field
+                project_field_names = [f.name for f in Project._meta.get_fields()]
+                if 'is_archived' in project_field_names:
+                    Project.objects.filter(workspace=workspace).update(is_archived=True)
+                # Otherwise, do nothing - projects will remain but workspace is deleted
+            except Exception as e:
+                # Log the error but don't fail the workspace deletion
+                pass
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
+
 
     # -----------------------------
     # Custom actions
     # -----------------------------
-    @action(detail=True, methods=["post"])  # /{id}/archive_workspace/
+    @action(detail=True, methods=["post"])
     def archive_workspace(self, request: Request, id: str = None) -> Response:
         """Archive the workspace (admin/owner only)."""
         workspace = self.get_object()
         if not IsWorkspaceAdminOrOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        
         if hasattr(workspace, "is_archived"):
             workspace.is_archived = True
             workspace.archived_at = timezone.now()
@@ -250,11 +275,20 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
         else:
             # fallback: mark deleted
             workspace.delete()
+        
         # archive projects
         Project = apps.get_model("projects", "Project") if apps.is_installed("apps.projects") or apps.is_installed("projects") else None
         if Project:
-            Project.objects.filter(workspace=workspace).update(is_archived=True)
+            try:
+                # Check if Project model has is_archived field
+                project_field_names = [f.name for f in Project._meta.get_fields()]
+                if 'is_archived' in project_field_names:
+                    Project.objects.filter(workspace=workspace).update(is_archived=True)
+            except Exception:
+                pass
+        
         return Response({"detail": "Workspace archived."})
+
 
     @action(detail=True, methods=["post"])  # /{id}/restore_workspace/
     def restore_workspace(self, request: Request, id: str = None) -> Response:
@@ -357,16 +391,18 @@ class WorkspaceMemberViewSet(viewsets.ViewSet):
         workspace = self._get_workspace(workspace_id)
         # permission: must be a member to view
         WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
-        if not WorkspaceMember.objects.filter(workspace=workspace, user=request.user).exists():
+        if not WorkspaceMember.objects.filter(workspace=workspace, user=request.user, is_active=True).exists():
             return Response({"detail": "Not a workspace member."}, status=status.HTTP_403_FORBIDDEN)
-        qs = WorkspaceMember.objects.filter(workspace=workspace)
+        
+        qs = WorkspaceMember.objects.filter(workspace=workspace, is_active=True)
         role = request.query_params.get("role")
         if role:
             qs = qs.filter(role=role)
         q = request.query_params.get("q")
         if q:
             qs = qs.filter(Q(user__email__icontains=q) | Q(user__first_name__icontains=q) | Q(user__last_name__icontains=q))
-        serializer = WorkspaceMemberSerializer(qs, many=True)
+        
+        serializer = WorkspaceMemberSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
 
     def create(self, request: Request, workspace_id: str = None) -> Response:
@@ -374,35 +410,46 @@ class WorkspaceMemberViewSet(viewsets.ViewSet):
         workspace = self._get_workspace(workspace_id)
         if not IsWorkspaceAdminOrOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-        serializer = WorkspaceMemberCreateSerializer(data=request.data)
+        
+        # Pass workspace in context - THIS IS THE KEY FIX
+        serializer = WorkspaceMemberCreateSerializer(
+            data=request.data,
+            context={'workspace': workspace, 'request': request}
+        )
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        User = apps.get_model(settings.AUTH_USER_MODEL.split(".")[0], settings.AUTH_USER_MODEL.split(".")[1]) if "." in settings.AUTH_USER_MODEL else apps.get_model(settings.AUTH_USER_MODEL)
-        try:
-            user = User.objects.get(id=data.get("user_id")) if data.get("user_id") else User.objects.get(email=data.get("email"))
-        except Exception:
-            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # The serializer.save() handles everything
+        result = serializer.save()
+        
+        # Check if result is an invitation or membership
+        WorkspaceInvitation = apps.get_model("workspaces", "WorkspaceInvitation")
         WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
-        membership, created = WorkspaceMember.objects.get_or_create(workspace=workspace, user=user, defaults={"role": data.get("role", "member")})
-        if not created:
-            return Response({"detail": "User already member."}, status=status.HTTP_400_BAD_REQUEST)
-        # optional: send notification
-        try:
-            if hasattr(user, "notify"):
-                user.notify(f"You were added to workspace {workspace.name}")
-        except Exception:
-            pass
-        out = WorkspaceMemberSerializer(membership)
-        return Response(out.data, status=status.HTTP_201_CREATED)
+        
+        if isinstance(result, WorkspaceInvitation):
+            # An invitation was created
+            try:
+                result.send_invitation_email()
+            except Exception:
+                pass
+            out = WorkspaceInvitationSerializer(result, context={'request': request})
+            return Response(out.data, status=status.HTTP_201_CREATED)
+        else:
+            # Membership was created
+            # Update workspace counts
+            workspace.update_counts()
+            out = WorkspaceMemberSerializer(result, context={'request': request})
+            return Response(out.data, status=status.HTTP_201_CREATED)
 
     def retrieve(self, request: Request, workspace_id: str = None, user_id: str = None) -> Response:
         workspace = self._get_workspace(workspace_id)
         WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
-        membership = get_object_or_404(WorkspaceMember, workspace=workspace, user__id=user_id)
+        membership = get_object_or_404(WorkspaceMember, workspace=workspace, user__id=user_id, is_active=True)
+        
         # permissions: must be member
-        if not WorkspaceMember.objects.filter(workspace=workspace, user=request.user).exists():
+        if not WorkspaceMember.objects.filter(workspace=workspace, user=request.user, is_active=True).exists():
             return Response({"detail": "Not a member."}, status=status.HTTP_403_FORBIDDEN)
-        serializer = WorkspaceMemberSerializer(membership)
+        
+        serializer = WorkspaceMemberSerializer(membership, context={'request': request})
         return Response(serializer.data)
 
     def update(self, request: Request, workspace_id: str = None, user_id: str = None) -> Response:
@@ -410,26 +457,56 @@ class WorkspaceMemberViewSet(viewsets.ViewSet):
         workspace = self._get_workspace(workspace_id)
         if not IsWorkspaceAdminOrOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        
         WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
-        membership = get_object_or_404(WorkspaceMember, workspace=workspace, user__id=user_id)
+        membership = get_object_or_404(WorkspaceMember, workspace=workspace, user__id=user_id, is_active=True)
+        
         # protect owner
         if getattr(membership, "role", "member") == "owner" and request.user.id != membership.user_id:
             return Response({"detail": "Cannot modify owner."}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = WorkspaceMemberCreateSerializer(membership, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(WorkspaceMemberSerializer(membership).data)
+        
+        # Try to use UpdateMemberRoleSerializer first, fall back to WorkspaceMemberCreateSerializer
+        try:
+            from .serializers import UpdateMemberRoleSerializer
+            serializer = UpdateMemberRoleSerializer(
+                data=request.data,
+                context={'workspace': workspace, 'member': membership, 'request': request}
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        except ImportError:
+            # Fallback - directly update the membership
+            role = request.data.get('role')
+            if role:
+                membership.role = role
+                membership.save(update_fields=['role'])
+            
+            permissions = request.data.get('custom_permissions') or request.data.get('permissions')
+            if permissions is not None:
+                membership.permissions = permissions
+                membership.save(update_fields=['permissions'])
+        
+        return Response(WorkspaceMemberSerializer(membership, context={'request': request}).data)
 
     def destroy(self, request: Request, workspace_id: str = None, user_id: str = None) -> Response:
         workspace = self._get_workspace(workspace_id)
         if not IsWorkspaceAdminOrOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        
         WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
-        membership = get_object_or_404(WorkspaceMember, workspace=workspace, user__id=user_id)
+        membership = get_object_or_404(WorkspaceMember, workspace=workspace, user__id=user_id, is_active=True)
+        
         # cannot remove owner
         if getattr(membership, "role", "member") == "owner":
             return Response({"detail": "Cannot remove owner."}, status=status.HTTP_400_BAD_REQUEST)
-        membership.delete()
+        
+        # Soft delete by setting is_active=False
+        membership.is_active = False
+        membership.save(update_fields=['is_active'])
+        
+        # Update workspace counts
+        workspace.update_counts()
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -450,9 +527,12 @@ class WorkspaceInvitationViewSet(viewsets.ViewSet):
         workspace = self._get_workspace(workspace_id)
         if not IsWorkspaceAdminOrOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        
         Invitation = apps.get_model("workspaces", "WorkspaceInvitation")
-        qs = Invitation.objects.filter(workspace=workspace, accepted=False, revoked=False)
-        serializer = WorkspaceInvitationSerializer(qs, many=True)
+        # Use status field instead of accepted/revoked
+        qs = Invitation.objects.filter(workspace=workspace, status='pending')
+        
+        serializer = WorkspaceInvitationSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
 
     @transaction.atomic
@@ -460,64 +540,79 @@ class WorkspaceInvitationViewSet(viewsets.ViewSet):
         workspace = self._get_workspace(workspace_id)
         if not IsWorkspaceAdminOrOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-        serializer = WorkspaceInvitationCreateSerializer(data=request.data)
+        
+        serializer = WorkspaceInvitationCreateSerializer(
+            data=request.data,
+            context={'workspace': workspace, 'request': request}
+        )
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        Invitation = apps.get_model("workspaces", "WorkspaceInvitation")
-        token = uuid.uuid4().hex
-        expiry = timezone.now() + timedelta(days=7)
-        invitation = Invitation.objects.create(workspace=workspace, email=data.get("email"), token=token, expires_at=expiry, inviter=request.user)
-        # send email (placeholder)
+        
+        # The serializer.save() will create the invitation
+        invitation = serializer.save()
+        
+        # Send email (placeholder)
         try:
-            if hasattr(invitation, "send_email"):
-                invitation.send_email()
+            if hasattr(invitation, "send_invitation_email"):
+                invitation.send_invitation_email()
         except Exception:
             pass
-        return Response(WorkspaceInvitationSerializer(invitation).data, status=status.HTTP_201_CREATED)
+        
+        return Response(
+            WorkspaceInvitationSerializer(invitation, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
 
     def destroy(self, request: Request, workspace_id: str = None, pk: str = None) -> Response:
         workspace = self._get_workspace(workspace_id)
         if not IsWorkspaceAdminOrOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        
         Invitation = apps.get_model("workspaces", "WorkspaceInvitation")
         invitation = get_object_or_404(Invitation, workspace=workspace, id=pk)
-        invitation.revoked = True
-        invitation.revoked_at = timezone.now()
-        invitation.save()
+        
+        # Use status field instead of revoked boolean
+        invitation.status = 'revoked'
+        invitation.save(update_fields=['status'])
+        
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"], url_path="accept")
     @transaction.atomic
-    def accept_invitation(self, request: Request) -> Response:
+    def accept_invitation(self, request: Request, workspace_id: str = None) -> Response:
         """Accept an invitation by token (body: token)."""
         token = request.data.get("token")
         if not token:
             return Response({"detail": "token is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
         Invitation = apps.get_model("workspaces", "WorkspaceInvitation")
-        invitation = Invitation.objects.filter(token=token, accepted=False, revoked=False).first()
+        invitation = Invitation.objects.filter(token=token, status='pending').first()
+        
         if not invitation or (invitation.expires_at and invitation.expires_at < timezone.now()):
             return Response({"detail": "Invitation not found or expired."}, status=status.HTTP_404_NOT_FOUND)
-        # create membership
-        WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
-        membership, created = WorkspaceMember.objects.get_or_create(workspace=invitation.workspace, user=request.user, defaults={"role": "member"})
-        invitation.accepted = True
-        invitation.accepted_at = timezone.now()
-        invitation.accepted_by = request.user
-        invitation.save()
+        
+        # Use the model's accept method
+        try:
+            invitation.accept(request.user)
+        except ValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
         return Response({"detail": "Invitation accepted."})
 
     @action(detail=False, methods=["post"], url_path="decline")
-    def decline_invitation(self, request: Request) -> Response:
+    def decline_invitation(self, request: Request, workspace_id: str = None) -> Response:
         token = request.data.get("token")
         if not token:
             return Response({"detail": "token is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
         Invitation = apps.get_model("workspaces", "WorkspaceInvitation")
-        invitation = Invitation.objects.filter(token=token, accepted=False, revoked=False).first()
+        invitation = Invitation.objects.filter(token=token, status='pending').first()
+        
         if not invitation:
             return Response({"detail": "Invitation not found or expired."}, status=status.HTTP_404_NOT_FOUND)
-        invitation.revoked = True
-        invitation.revoked_at = timezone.now()
-        invitation.save()
+        
+        # Use cancel method which sets status to revoked
+        invitation.cancel()
+        
         return Response({"detail": "Invitation declined."})
 
     @action(detail=True, methods=["post"], url_path="resend")
@@ -525,18 +620,22 @@ class WorkspaceInvitationViewSet(viewsets.ViewSet):
         workspace = self._get_workspace(workspace_id)
         if not IsWorkspaceAdminOrOwner().has_object_permission(request, self, workspace):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        
         Invitation = apps.get_model("workspaces", "WorkspaceInvitation")
         invitation = get_object_or_404(Invitation, workspace=workspace, id=pk)
-        # regenerate token and expiry
+        
+        # Regenerate token and expiry
         invitation.token = uuid.uuid4().hex
         invitation.expires_at = timezone.now() + timedelta(days=7)
-        invitation.revoked = False
-        invitation.save()
+        invitation.status = 'pending'  # Reset status to pending
+        invitation.save(update_fields=['token', 'expires_at', 'status'])
+        
         try:
-            if hasattr(invitation, "send_email"):
-                invitation.send_email()
+            if hasattr(invitation, "send_invitation_email"):
+                invitation.send_invitation_email()
         except Exception:
             pass
+        
         return Response({"detail": "Invitation resent."})
 
 
@@ -549,9 +648,9 @@ class WorkspaceStatsView(APIView):
 
     permission_classes = (IsAuthenticated,)
 
-    def get(self, request: Request, id: str = None) -> Response:
+    def get(self, request: Request, workspace_id: str = None) -> Response:
         Workspace = apps.get_model("workspaces", "Workspace")
-        workspace = get_object_or_404(Workspace, id=id)
+        workspace = get_object_or_404(Workspace, id=workspace_id)
         # permission
         WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
         if not WorkspaceMember.objects.filter(workspace=workspace, user=request.user).exists():
@@ -602,9 +701,9 @@ class WorkspaceActivityView(APIView):
 
     permission_classes = (IsAuthenticated,)
 
-    def get(self, request: Request, id: str = None) -> Response:
+    def get(self, request: Request, workspace_id: str = None) -> Response:
         Workspace = apps.get_model("workspaces", "Workspace")
-        workspace = get_object_or_404(Workspace, id=id)
+        workspace = get_object_or_404(Workspace, id=workspace_id)
         WorkspaceMember = apps.get_model("workspaces", "WorkspaceMember")
         if not WorkspaceMember.objects.filter(workspace=workspace, user=request.user).exists():
             return Response({"detail": "Not a member."}, status=status.HTTP_403_FORBIDDEN)

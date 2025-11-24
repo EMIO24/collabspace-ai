@@ -6,3 +6,17 @@ ERROR 2025-11-21 11:23:20,607 log 8955 140215621428928 Internal Server Error: /a
 ERROR 2025-11-21 11:27:03,239 log 11202 140354451842752 Internal Server Error: /api/auth/register/
 ERROR 2025-11-21 11:27:51,567 log 11224 140148675180224 Internal Server Error: /api/auth/register/
 ERROR 2025-11-21 11:43:39,470 log 11323 139629420259008 Internal Server Error: /api/auth/register/
+ERROR 2025-11-22 20:41:08,903 log 13257 140217019250368 Internal Server Error: /api/auth/profile/
+ERROR 2025-11-23 05:08:28,282 log 13551 139748303697600 Internal Server Error: /api/workspaces/
+ERROR 2025-11-23 05:18:00,537 log 13739 140260881200832 Internal Server Error: /api/workspaces/
+ERROR 2025-11-23 06:26:01,512 log 13811 139963174659776 Internal Server Error: /api/workspaces/
+ERROR 2025-11-23 06:33:59,283 log 13931 140234217924288 Internal Server Error: /api/workspaces/
+ERROR 2025-11-23 06:56:40,605 log 14042 140132242859712 Internal Server Error: /api/workspaces/9bb18564-9d45-47d3-8e8f-140383d168e2/
+ERROR 2025-11-23 23:04:30,624 log 14126 139851565356736 Internal Server Error: /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/stats/
+ERROR 2025-11-23 23:06:53,551 log 14395 139672258787008 Internal Server Error: /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/stats/
+ERROR 2025-11-23 23:11:43,644 log 14440 140095670625984 Internal Server Error: /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/activity/
+ERROR 2025-11-24 07:33:39,264 log 14605 139644083631808 Internal Server Error: /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/invitations/
+ERROR 2025-11-24 07:38:32,602 log 14638 139665545881280 Internal Server Error: /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/invitations/
+ERROR 2025-11-24 07:50:18,579 log 14811 140567157663424 Internal Server Error: /api/workspaces/invitations/accept/
+ERROR 2025-11-24 12:29:13,549 log 15144 140285963052736 Internal Server Error: /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/1/
+ERROR 2025-11-24 12:30:27,240 log 15144 140285963052736 Internal Server Error: /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/1/

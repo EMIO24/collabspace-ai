@@ -18,6 +18,8 @@ router = DefaultRouter()
 router.register("", WorkspaceViewSet, basename="workspace")
 
 urlpatterns = [
+    # Search
+    path("search/", WorkspaceSearchView.as_view(), name="workspace-search"),
     # Main workspace routes (list, retrieve, create, update, destroy)
     path("", include(router.urls)),
 
@@ -42,7 +44,7 @@ urlpatterns = [
         name="workspace-invitations-list-create",
     ),
     path(
-        "<uuid:workspace_id>/invitations/<int:invitation_id>/",
+        "<uuid:workspace_id>/invitations/<int:pk>/",
         WorkspaceInvitationViewSet.as_view({"delete": "destroy"}),
         name="workspace-invitations-destroy",
     ),
@@ -69,6 +71,4 @@ urlpatterns = [
         name="workspace-activity",
     ),
 
-    # Search
-    path("search/", WorkspaceSearchView.as_view(), name="workspace-search"),
 ]

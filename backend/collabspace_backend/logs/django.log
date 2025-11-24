@@ -71,3 +71,362 @@ WARNING 2025-11-21 12:06:44,060 basehttp 11355 140404762605248 "POST /api/worksp
 INFO 2025-11-21 12:06:56,009 basehttp 11355 140404762605248 "POST /api/auth/login/ HTTP/1.1" 200 1297
 WARNING 2025-11-21 12:07:02,600 basehttp 11355 140404762605248 "POST /api/workspaces/ HTTP/1.1" 401 201
 INFO 2025-11-21 12:30:26,378 autoreload 11523 139977780252800 Watching for file changes with StatReloader
+WARNING 2025-11-22 20:20:19,417 basehttp 11523 139977628231360 "POST /api/auth/register/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:20,991 basehttp 11523 139977628231360 "POST /api/auth/login/ HTTP/1.1" 401 95
+WARNING 2025-11-22 20:20:21,171 basehttp 11523 139977628231360 "POST /api/auth/refresh/ HTTP/1.1" 401 83
+WARNING 2025-11-22 20:20:21,280 basehttp 11523 139977628231360 "POST /api/auth/logout/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:21,390 basehttp 11523 139977628231360 "GET /api/auth/profile/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:21,492 basehttp 11523 139977628231360 "PUT /api/auth/profile/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:21,643 basehttp 11523 139977628231360 "POST /api/auth/change-password/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:21,719 basehttp 11523 139977628231360 "POST /api/auth/verify-email/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:21,801 basehttp 11523 139977628231360 "POST /api/auth/resend-verification/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:21,873 basehttp 11523 139977628231360 "POST /api/auth/reset-password/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:21,937 basehttp 11523 139977628231360 "POST /api/auth/reset-password-confirm/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:22,014 basehttp 11523 139977628231360 "POST /api/auth/2fa/enable/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:22,111 basehttp 11523 139977628231360 "POST /api/auth/2fa/verify-setup/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:22,197 basehttp 11523 139977628231360 "POST /api/auth/2fa/disable/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:22,290 basehttp 11523 139977628231360 "GET /api/auth/sessions/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:22,368 basehttp 11523 139977628231360 "DELETE /api/auth/sessions/1/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:22,452 basehttp 11523 139977628231360 "POST /api/auth/sessions/revoke-all/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:22,521 basehttp 11523 139977628231360 "GET /api/auth/users/search/?q=test HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:22,688 basehttp 11523 139977628231360 "GET /api/auth/users// HTTP/1.1" 404 10928
+WARNING 2025-11-22 20:20:22,782 basehttp 11523 139977628231360 "POST /api/auth/register/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:23,869 basehttp 11523 139977628231360 "POST /api/auth/login/ HTTP/1.1" 401 95
+WARNING 2025-11-22 20:20:23,965 basehttp 11523 139977628231360 "POST /api/auth/refresh/ HTTP/1.1" 401 83
+WARNING 2025-11-22 20:20:24,067 basehttp 11523 139977628231360 "POST /api/auth/logout/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,158 basehttp 11523 139977628231360 "GET /api/auth/profile/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,239 basehttp 11523 139977628231360 "PUT /api/auth/profile/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,315 basehttp 11523 139977628231360 "POST /api/auth/change-password/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,425 basehttp 11523 139977628231360 "POST /api/auth/verify-email/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,502 basehttp 11523 139977628231360 "POST /api/auth/resend-verification/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,583 basehttp 11523 139977628231360 "POST /api/auth/reset-password/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,660 basehttp 11523 139977628231360 "POST /api/auth/reset-password-confirm/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,723 basehttp 11523 139977628231360 "POST /api/auth/2fa/enable/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,812 basehttp 11523 139977628231360 "POST /api/auth/2fa/verify-setup/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,892 basehttp 11523 139977628231360 "POST /api/auth/2fa/disable/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:24,968 basehttp 11523 139977628231360 "GET /api/auth/sessions/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:25,063 basehttp 11523 139977628231360 "DELETE /api/auth/sessions/1/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:25,154 basehttp 11523 139977628231360 "POST /api/auth/sessions/revoke-all/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:25,248 basehttp 11523 139977628231360 "GET /api/auth/users/search/?q=test HTTP/1.1" 401 201
+WARNING 2025-11-22 20:20:25,322 basehttp 11523 139977628231360 "GET /api/auth/users// HTTP/1.1" 404 10928
+WARNING 2025-11-22 20:21:01,541 basehttp 11523 139977628231360 "POST /api/auth/register/ HTTP/1.1" 401 201
+INFO 2025-11-22 20:27:29,268 autoreload 13257 140217275080832 Watching for file changes with StatReloader
+WARNING 2025-11-22 20:27:52,018 basehttp 13257 140217054918336 "POST /api/auth/register/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:28:25,528 basehttp 13257 140217054918336 "POST /api/auth/register/ HTTP/1.1" 400 175
+INFO 2025-11-22 20:29:09,127 basehttp 13257 140217054918336 "POST /api/auth/register/ HTTP/1.1" 201 1094
+WARNING 2025-11-22 20:30:37,019 basehttp 13257 140217044428480 "POST /api/auth/verify-email/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:32:59,475 basehttp 13257 140217036035776 "POST /api/auth/verify-email/ HTTP/1.1" 401 201
+INFO 2025-11-22 20:33:46,204 basehttp 13257 140217036035776 "POST /api/auth/verify-email/ HTTP/1.1" 200 41
+WARNING 2025-11-22 20:34:13,463 basehttp 13257 140217036035776 "POST /api/auth/resend-verification/ HTTP/1.1" 401 201
+WARNING 2025-11-22 20:34:31,389 basehttp 13257 140217036035776 "POST /api/auth/resend-verification/ HTTP/1.1" 400 37
+INFO 2025-11-22 20:34:47,834 basehttp 13257 140217036035776 "POST /api/auth/login/ HTTP/1.1" 200 1264
+INFO 2025-11-22 20:35:48,169 basehttp 13257 140217027643072 "POST /api/auth/refresh/ HTTP/1.1" 200 827
+WARNING 2025-11-22 20:36:16,891 basehttp 13257 140217027643072 "POST /api/auth/logout/ HTTP/1.1" 400 32
+WARNING 2025-11-22 20:36:43,535 basehttp 13257 140217027643072 "POST /api/auth/refresh/ HTTP/1.1" 401 87
+WARNING 2025-11-22 20:37:00,193 basehttp 13257 140217027643072 "POST /api/auth/logout/ HTTP/1.1" 400 32
+WARNING 2025-11-22 20:37:17,421 basehttp 13257 140217027643072 "POST /api/auth/refresh/ HTTP/1.1" 401 87
+INFO 2025-11-22 20:37:51,009 basehttp 13257 140217027643072 "POST /api/auth/login/ HTTP/1.1" 200 1264
+WARNING 2025-11-22 20:38:55,533 basehttp 13257 140217019250368 "POST /api/auth/logout/ HTTP/1.1" 400 32
+INFO 2025-11-22 20:39:25,716 basehttp 13257 140217019250368 "POST /api/auth/logout/ HTTP/1.1" 200 37
+INFO 2025-11-22 20:39:37,657 basehttp 13257 140217019250368 "POST /api/auth/login/ HTTP/1.1" 200 1264
+WARNING 2025-11-22 20:39:57,808 basehttp 13257 140217019250368 "GET /api/auth/profile/ HTTP/1.1" 401 201
+INFO 2025-11-22 20:40:48,327 basehttp 13257 140217019250368 "GET /api/auth/profile/ HTTP/1.1" 200 429
+ERROR 2025-11-22 20:41:08,905 basehttp 13257 140217019250368 "PUT /api/auth/profile/ HTTP/1.1" 500 185
+INFO 2025-11-22 20:46:56,681 autoreload 13257 140217275080832 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/authentication/models.py changed, reloading.
+INFO 2025-11-22 20:47:01,243 autoreload 13335 139903648034944 Watching for file changes with StatReloader
+INFO 2025-11-22 20:47:15,720 autoreload 13335 139903648034944 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/authentication/models.py changed, reloading.
+INFO 2025-11-22 20:47:19,629 autoreload 13345 140463787323520 Watching for file changes with StatReloader
+INFO 2025-11-22 20:47:45,418 autoreload 13345 140463787323520 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/authentication/serializers.py changed, reloading.
+INFO 2025-11-22 20:47:48,531 autoreload 13356 140340479631488 Watching for file changes with StatReloader
+INFO 2025-11-22 20:48:01,146 basehttp 13356 140340259370688 "PUT /api/auth/profile/ HTTP/1.1" 200 493
+WARNING 2025-11-22 20:48:24,960 basehttp 13356 140340259370688 "POST /api/auth/change-password/ HTTP/1.1" 400 183
+INFO 2025-11-22 20:49:14,499 basehttp 13356 140340259370688 "POST /api/auth/change-password/ HTTP/1.1" 200 43
+WARNING 2025-11-22 20:58:36,621 basehttp 13356 140340248880832 "POST /api/auth/reset-password/ HTTP/1.1" 401 201
+INFO 2025-11-22 20:59:25,257 basehttp 13356 140340248880832 "POST /api/auth/refresh/ HTTP/1.1" 200 827
+INFO 2025-11-22 20:59:49,930 basehttp 13356 140340248880832 "POST /api/auth/reset-password/ HTTP/1.1" 200 88
+WARNING 2025-11-22 21:00:20,323 basehttp 13356 140340248880832 "POST /api/auth/resend-verification/ HTTP/1.1" 401 201
+WARNING 2025-11-22 21:00:27,279 basehttp 13356 140340248880832 "POST /api/auth/resend-verification/ HTTP/1.1" 400 37
+WARNING 2025-11-22 21:00:41,307 basehttp 13356 140340248880832 "POST /api/auth/reset-password-confirm/ HTTP/1.1" 401 201
+WARNING 2025-11-22 21:00:53,425 basehttp 13356 140340248880832 "POST /api/auth/reset-password-confirm/ HTTP/1.1" 400 308
+WARNING 2025-11-22 21:01:42,396 basehttp 13356 140340248880832 "POST /api/auth/reset-password-confirm/ HTTP/1.1" 400 31
+WARNING 2025-11-22 21:02:32,904 basehttp 13356 140340248880832 "POST /api/auth/reset-password-confirm/ HTTP/1.1" 401 201
+INFO 2025-11-22 21:03:18,725 basehttp 13356 140340248880832 "POST /api/auth/reset-password-confirm/ HTTP/1.1" 200 41
+WARNING 2025-11-22 21:03:49,080 basehttp 13356 140340248880832 "POST /api/auth/2fa/enable/ HTTP/1.1" 400 159
+INFO 2025-11-22 21:05:25,157 basehttp 13356 140340240488128 "POST /api/auth/2fa/enable/ HTTP/1.1" 200 1863
+WARNING 2025-11-22 21:06:10,065 basehttp 13356 140340240488128 "POST /api/auth/2fa/verify-setup/ HTTP/1.1" 400 37
+WARNING 2025-11-22 21:15:13,952 basehttp 13356 140340231046848 "POST /api/auth/2fa/verify-setup/ HTTP/1.1" 401 201
+WARNING 2025-11-22 21:15:25,732 basehttp 13356 140340231046848 "POST /api/auth/2fa/enable/ HTTP/1.1" 401 201
+WARNING 2025-11-22 21:15:51,983 basehttp 13356 140340231046848 "POST /api/auth/refresh/ HTTP/1.1" 401 87
+WARNING 2025-11-23 04:41:02,010 basehttp 13356 140340240488128 "POST /api/auth/login/ HTTP/1.1" 401 95
+INFO 2025-11-23 04:41:54,658 basehttp 13356 140340240488128 "POST /api/auth/login/ HTTP/1.1" 200 1286
+INFO 2025-11-23 04:43:04,635 basehttp 13356 140340248880832 "POST /api/auth/2fa/enable/ HTTP/1.1" 200 1931
+INFO 2025-11-23 04:43:53,265 basehttp 13356 140340240488128 "POST /api/auth/2fa/enable/ HTTP/1.1" 200 1955
+INFO 2025-11-23 04:50:11,607 basehttp 13356 140340248880832 "GET /api/auth/sessions/ HTTP/1.1" 200 25
+WARNING 2025-11-23 04:50:26,333 basehttp 13356 140340248880832 "DELETE /api/auth/sessions/1/ HTTP/1.1" 404 29
+WARNING 2025-11-23 04:50:45,261 basehttp 13356 140340248880832 "DELETE /api/auth/sessions/0/ HTTP/1.1" 404 29
+INFO 2025-11-23 04:50:58,003 basehttp 13356 140340248880832 "POST /api/auth/sessions/revoke-all/ HTTP/1.1" 200 47
+INFO 2025-11-23 04:51:15,039 basehttp 13356 140340248880832 "GET /api/auth/users/search/?q=test HTTP/1.1" 200 24
+INFO 2025-11-23 04:51:31,422 basehttp 13356 140340248880832 "GET /api/auth/users/e4aca93c-b63e-420f-888e-b8c17f392fce/ HTTP/1.1" 200 125
+INFO 2025-11-23 04:51:53,363 basehttp 13356 140340248880832 "POST /api/auth/activity/update/ HTTP/1.1" 200 76
+INFO 2025-11-23 04:52:15,344 basehttp 13356 140340248880832 "GET /api/auth/stats/ HTTP/1.1" 200 292
+INFO 2025-11-23 04:52:54,750 basehttp 13356 140340248880832 "GET /api/auth/check/ HTTP/1.1" 200 901
+INFO 2025-11-23 04:53:38,287 basehttp 13356 140340248880832 "DELETE /api/auth/account/ HTTP/1.1" 200 42
+WARNING 2025-11-23 04:53:51,300 basehttp 13356 140340248880832 "POST /api/auth/register/ HTTP/1.1" 400 332
+WARNING 2025-11-23 04:54:02,038 basehttp 13356 140340248880832 "POST /api/auth/login/ HTTP/1.1" 401 95
+INFO 2025-11-23 05:03:07,820 autoreload 13551 139748527837312 Watching for file changes with StatReloader
+INFO 2025-11-23 05:03:45,918 basehttp 13551 139748303697600 "POST /api/auth/register/ HTTP/1.1" 201 1094
+INFO 2025-11-23 05:04:20,485 basehttp 13551 139748303697600 "POST /api/auth/login/ HTTP/1.1" 200 1265
+INFO 2025-11-23 05:04:43,816 basehttp 13551 139748303697600 "POST /api/auth/resend-verification/ HTTP/1.1" 200 50
+WARNING 2025-11-23 05:05:35,550 basehttp 13551 139748303697600 "POST /api/auth/verify-email/ HTTP/1.1" 401 201
+WARNING 2025-11-23 05:06:15,942 basehttp 13551 139748303697600 "POST /api/auth/verify-email/ HTTP/1.1" 400 38
+INFO 2025-11-23 05:06:53,857 basehttp 13551 139748303697600 "POST /api/auth/resend-verification/ HTTP/1.1" 200 50
+INFO 2025-11-23 05:07:47,805 basehttp 13551 139748303697600 "POST /api/auth/verify-email/ HTTP/1.1" 200 41
+ERROR 2025-11-23 05:08:28,284 basehttp 13551 139748303697600 "GET /api/workspaces/ HTTP/1.1" 500 108
+INFO 2025-11-23 05:11:18,727 autoreload 13551 139748527837312 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:11:24,966 autoreload 13594 140391926694016 Watching for file changes with StatReloader
+INFO 2025-11-23 05:14:34,026 autoreload 13594 140391926694016 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:14:37,977 autoreload 13626 139978484674688 Watching for file changes with StatReloader
+INFO 2025-11-23 05:14:41,655 autoreload 13626 139978484674688 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:14:44,147 autoreload 13629 139742683111552 Watching for file changes with StatReloader
+INFO 2025-11-23 05:15:02,742 autoreload 13629 139742683111552 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:15:05,555 autoreload 13633 140688181985408 Watching for file changes with StatReloader
+INFO 2025-11-23 05:15:32,262 autoreload 13633 140688181985408 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:15:35,107 autoreload 13639 140334598885504 Watching for file changes with StatReloader
+INFO 2025-11-23 05:15:38,630 autoreload 13639 140334598885504 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:15:41,640 autoreload 13642 139891257462912 Watching for file changes with StatReloader
+INFO 2025-11-23 05:15:48,617 autoreload 13642 139891257462912 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:15:51,961 autoreload 13646 140528401653888 Watching for file changes with StatReloader
+INFO 2025-11-23 05:16:31,324 autoreload 13646 140528401653888 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:16:34,050 autoreload 13693 140018746482816 Watching for file changes with StatReloader
+INFO 2025-11-23 05:17:48,792 autoreload 13693 140018746482816 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:17:51,759 autoreload 13739 140261105356928 Watching for file changes with StatReloader
+ERROR 2025-11-23 05:18:00,539 basehttp 13739 140260881200832 "GET /api/workspaces/ HTTP/1.1" 500 108
+INFO 2025-11-23 05:20:30,665 autoreload 13739 140261105356928 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 05:20:33,420 autoreload 13765 139898664292480 Watching for file changes with StatReloader
+WARNING 2025-11-23 05:21:35,105 basehttp 13765 139898512123584 "POST /api/workspaces/ HTTP/1.1" 401 201
+INFO 2025-11-23 06:24:28,716 autoreload 13765 139898664292480 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:24:35,963 autoreload 13790 139852760367232 Watching for file changes with StatReloader
+INFO 2025-11-23 06:25:26,197 autoreload 13790 139852760367232 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:25:29,707 autoreload 13811 139963326201984 Watching for file changes with StatReloader
+INFO 2025-11-23 06:25:35,690 basehttp 13811 139963174659776 "POST /api/auth/login/ HTTP/1.1" 200 1264
+ERROR 2025-11-23 06:26:01,514 basehttp 13811 139963174659776 "GET /api/workspaces/ HTTP/1.1" 500 108
+INFO 2025-11-23 06:30:04,706 autoreload 13811 139963326201984 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-23 06:30:09,633 autoreload 13864 140159098097792 Watching for file changes with StatReloader
+INFO 2025-11-23 06:30:48,431 autoreload 13864 140159098097792 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:30:51,703 autoreload 13879 140033524105344 Watching for file changes with StatReloader
+INFO 2025-11-23 06:30:59,404 autoreload 13879 140033524105344 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:31:02,403 autoreload 13883 140282272391296 Watching for file changes with StatReloader
+INFO 2025-11-23 06:31:10,997 autoreload 13883 140282272391296 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:31:13,999 autoreload 13887 139979829084288 Watching for file changes with StatReloader
+INFO 2025-11-23 06:31:16,425 autoreload 13887 139979829084288 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:31:19,022 autoreload 13890 140061065408640 Watching for file changes with StatReloader
+INFO 2025-11-23 06:31:23,966 autoreload 13890 140061065408640 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:31:26,870 autoreload 13895 140365530017920 Watching for file changes with StatReloader
+INFO 2025-11-23 06:31:32,376 autoreload 13895 140365530017920 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:31:35,131 autoreload 13899 140606383943808 Watching for file changes with StatReloader
+INFO 2025-11-23 06:31:44,158 autoreload 13899 140606383943808 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:31:47,183 autoreload 13904 140359535091840 Watching for file changes with StatReloader
+INFO 2025-11-23 06:31:52,156 autoreload 13904 140359535091840 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:31:55,220 autoreload 13908 140089433129088 Watching for file changes with StatReloader
+INFO 2025-11-23 06:32:08,632 autoreload 13908 140089433129088 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:32:11,688 autoreload 13913 139866752868480 Watching for file changes with StatReloader
+INFO 2025-11-23 06:32:18,143 autoreload 13913 139866752868480 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:32:21,219 autoreload 13917 139848970756224 Watching for file changes with StatReloader
+INFO 2025-11-23 06:32:26,116 autoreload 13917 139848970756224 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:32:29,035 autoreload 13922 140050365653120 Watching for file changes with StatReloader
+INFO 2025-11-23 06:32:36,356 autoreload 13922 140050365653120 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:32:39,088 autoreload 13926 139806611746944 Watching for file changes with StatReloader
+INFO 2025-11-23 06:32:44,265 autoreload 13926 139806611746944 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:32:47,309 autoreload 13931 140234370334848 Watching for file changes with StatReloader
+INFO 2025-11-23 06:33:00,195 basehttp 13931 140234217924288 "GET /api/workspaces/ HTTP/1.1" 200 52
+WARNING 2025-11-23 06:33:10,130 basehttp 13931 140234217924288 "POST /api/workspaces/ HTTP/1.1" 401 201
+ERROR 2025-11-23 06:33:59,285 basehttp 13931 140234217924288 "POST /api/workspaces/ HTTP/1.1" 500 187
+INFO 2025-11-23 06:37:55,419 autoreload 13931 140234370334848 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-23 06:37:58,405 autoreload 13961 140309875163264 Watching for file changes with StatReloader
+INFO 2025-11-23 06:38:08,157 autoreload 13961 140309875163264 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-23 06:38:11,479 autoreload 13966 140671797239936 Watching for file changes with StatReloader
+INFO 2025-11-23 06:38:25,431 autoreload 13966 140671797239936 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-23 06:38:29,038 autoreload 13971 140171933950080 Watching for file changes with StatReloader
+INFO 2025-11-23 06:38:39,532 autoreload 13971 140171933950080 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-23 06:38:42,918 autoreload 13975 140541938536576 Watching for file changes with StatReloader
+INFO 2025-11-23 06:39:03,238 autoreload 13975 140541938536576 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-23 06:39:06,824 autoreload 13979 139867369582720 Watching for file changes with StatReloader
+INFO 2025-11-23 06:39:44,530 basehttp 13979 139867149301440 "POST /api/workspaces/ HTTP/1.1" 201 609
+WARNING 2025-11-23 06:40:00,275 basehttp 13979 139867149301440 "GET /api/workspaces/2bb074a8-013d-41ad-8960-8f29def1b819/ HTTP/1.1" 404 82
+WARNING 2025-11-23 06:40:32,043 basehttp 13979 139867149301440 "GET /api/workspaces/2bb074a8-013d-41ad-8960-8f29def1b819/ HTTP/1.1" 404 82
+WARNING 2025-11-23 06:41:05,796 basehttp 13979 139867149301440 "GET /api/workspaces/93535e40-e70b-4635-b11e-187d14faa353/ HTTP/1.1" 401 201
+INFO 2025-11-23 06:42:07,509 basehttp 13979 139867139860160 "POST /api/auth/refresh/ HTTP/1.1" 200 827
+WARNING 2025-11-23 06:42:30,576 basehttp 13979 139867139860160 "GET /api/workspaces/93535e40-e70b-4635-b11e-187d14faa353/ HTTP/1.1" 404 82
+WARNING 2025-11-23 06:43:11,874 basehttp 13979 139867139860160 "GET /api/workspaces/2bb074a8-013d-41ad-8960-8f29def1b819/ HTTP/1.1" 404 82
+WARNING 2025-11-23 06:44:09,170 basehttp 13979 139867139860160 "PUT /api/workspaces/2bb074a8-013d-41ad-8960-8f29def1b819/ HTTP/1.1" 404 82
+INFO 2025-11-23 06:44:52,942 basehttp 13979 139867139860160 "GET /api/workspaces/ HTTP/1.1" 200 52
+INFO 2025-11-23 06:49:52,839 autoreload 13979 139867369582720 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:49:59,378 autoreload 14020 139879220433024 Watching for file changes with StatReloader
+INFO 2025-11-23 06:50:20,242 autoreload 14020 139879220433024 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:50:23,062 autoreload 14025 139948167733376 Watching for file changes with StatReloader
+INFO 2025-11-23 06:50:26,690 autoreload 14025 139948167733376 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:50:29,531 autoreload 14029 140464991191168 Watching for file changes with StatReloader
+INFO 2025-11-23 06:50:32,073 autoreload 14029 140464991191168 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:50:35,678 autoreload 14032 139663003537536 Watching for file changes with StatReloader
+INFO 2025-11-23 06:51:02,420 autoreload 14032 139663003537536 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:51:05,630 autoreload 14037 140156724932736 Watching for file changes with StatReloader
+INFO 2025-11-23 06:51:10,970 autoreload 14037 140156724932736 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 06:51:14,465 autoreload 14042 140132395241600 Watching for file changes with StatReloader
+WARNING 2025-11-23 06:52:35,694 basehttp 14042 140132242859712 "POST /api/workspaces/ HTTP/1.1" 401 201
+WARNING 2025-11-23 06:53:31,005 basehttp 14042 140132242859712 "POST /api/auth/refresh/ HTTP/1.1" 401 87
+WARNING 2025-11-23 06:54:07,427 basehttp 14042 140132242859712 "POST /api/auth/refresh/ HTTP/1.1" 401 87
+WARNING 2025-11-23 06:54:15,478 basehttp 14042 140132242859712 "POST /api/auth/refresh/ HTTP/1.1" 401 87
+WARNING 2025-11-23 06:54:38,579 basehttp 14042 140132242859712 "GET /api/workspaces/2bb074a8-013d-41ad-8960-8f29def1b819/ HTTP/1.1" 404 82
+WARNING 2025-11-23 06:54:58,581 basehttp 14042 140132242859712 "POST /api/auth/refresh/ HTTP/1.1" 401 87
+INFO 2025-11-23 06:55:10,297 basehttp 14042 140132242859712 "POST /api/auth/login/ HTTP/1.1" 200 1264
+INFO 2025-11-23 06:55:40,320 basehttp 14042 140132242859712 "POST /api/workspaces/ HTTP/1.1" 201 751
+INFO 2025-11-23 06:56:07,812 basehttp 14042 140132242859712 "GET /api/workspaces/9bb18564-9d45-47d3-8e8f-140383d168e2/ HTTP/1.1" 200 612
+INFO 2025-11-23 06:56:19,576 basehttp 14042 140132242859712 "PUT /api/workspaces/9bb18564-9d45-47d3-8e8f-140383d168e2/ HTTP/1.1" 200 602
+ERROR 2025-11-23 06:56:40,607 basehttp 14042 140132242859712 "DELETE /api/workspaces/9bb18564-9d45-47d3-8e8f-140383d168e2/ HTTP/1.1" 500 115
+INFO 2025-11-23 07:07:33,337 autoreload 14042 140132395241600 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 07:07:41,870 autoreload 14099 140580247982208 Watching for file changes with StatReloader
+INFO 2025-11-23 07:07:54,498 autoreload 14099 140580247982208 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 07:07:57,837 autoreload 14104 139751098056832 Watching for file changes with StatReloader
+INFO 2025-11-23 07:08:03,402 autoreload 14104 139751098056832 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 07:08:06,596 autoreload 14108 140705905463424 Watching for file changes with StatReloader
+INFO 2025-11-23 07:09:03,937 autoreload 14108 140705905463424 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 07:09:06,745 autoreload 14121 139789238395008 Watching for file changes with StatReloader
+INFO 2025-11-23 07:09:12,192 autoreload 14121 139789238395008 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 07:09:14,875 autoreload 14126 139851803799680 Watching for file changes with StatReloader
+INFO 2025-11-23 07:09:26,895 basehttp 14126 139851583190720 "DELETE /api/workspaces/9bb18564-9d45-47d3-8e8f-140383d168e2/ HTTP/1.1" 204 0
+WARNING 2025-11-23 07:09:51,731 basehttp 14126 139851583190720 "GET /api/workspaces/9bb18564-9d45-47d3-8e8f-140383d168e2/stats/ HTTP/1.1" 401 201
+WARNING 2025-11-23 07:10:24,046 basehttp 14126 139851583190720 "POST /api/workspaces/ HTTP/1.1" 401 201
+INFO 2025-11-23 23:03:04,809 basehttp 14126 139851573749440 "POST /api/auth/login/ HTTP/1.1" 200 1264
+INFO 2025-11-23 23:04:02,729 basehttp 14126 139851565356736 "POST /api/workspaces/ HTTP/1.1" 201 748
+ERROR 2025-11-23 23:04:30,627 basehttp 14126 139851565356736 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/stats/ HTTP/1.1" 500 149
+INFO 2025-11-23 23:06:38,531 autoreload 14126 139851803799680 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 23:06:46,510 autoreload 14395 139672478699648 Watching for file changes with StatReloader
+ERROR 2025-11-23 23:06:53,553 basehttp 14395 139672258787008 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/stats/ HTTP/1.1" 500 133
+INFO 2025-11-23 23:10:12,806 autoreload 14395 139672478699648 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/models.py changed, reloading.
+INFO 2025-11-23 23:10:17,711 autoreload 14424 140239074951296 Watching for file changes with StatReloader
+INFO 2025-11-23 23:11:05,717 autoreload 14440 140095822389376 Watching for file changes with StatReloader
+INFO 2025-11-23 23:11:13,197 basehttp 14440 140095670625984 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/stats/ HTTP/1.1" 200 152
+ERROR 2025-11-23 23:11:43,646 basehttp 14440 140095670625984 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/activity/ HTTP/1.1" 500 152
+INFO 2025-11-23 23:13:19,560 autoreload 14440 140095822389376 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-23 23:13:22,788 autoreload 14452 140549721747584 Watching for file changes with StatReloader
+INFO 2025-11-24 07:09:24,220 autoreload 14452 140549721747584 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-24 07:09:32,860 autoreload 14498 140376637173888 Watching for file changes with StatReloader
+INFO 2025-11-24 07:18:40,157 autoreload 14498 140376637173888 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-24 07:18:44,824 autoreload 14536 140316022243456 Watching for file changes with StatReloader
+INFO 2025-11-24 07:18:58,278 autoreload 14536 140316022243456 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-24 07:19:00,889 autoreload 14541 140123020800128 Watching for file changes with StatReloader
+INFO 2025-11-24 07:19:19,095 basehttp 14541 140122868590272 "POST /api/auth/login/ HTTP/1.1" 200 1264
+INFO 2025-11-24 07:20:16,710 basehttp 14541 140122868590272 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/activity/ HTTP/1.1" 200 52
+WARNING 2025-11-24 07:20:36,272 basehttp 14541 140122868590272 "GET /api/workspaces/search/?q=test HTTP/1.1" 404 55
+INFO 2025-11-24 07:23:11,951 autoreload 14541 140123020800128 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/urls.py changed, reloading.
+INFO 2025-11-24 07:23:16,895 autoreload 14560 140395924308096 Watching for file changes with StatReloader
+INFO 2025-11-24 07:23:22,051 autoreload 14560 140395924308096 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/urls.py changed, reloading.
+INFO 2025-11-24 07:23:25,241 autoreload 14565 139754949386368 Watching for file changes with StatReloader
+INFO 2025-11-24 07:23:34,210 basehttp 14565 139754797442752 "GET /api/workspaces/search/?q=test HTTP/1.1" 200 26
+WARNING 2025-11-24 07:24:06,103 basehttp 14565 139754797442752 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/ HTTP/1.1" 401 201
+INFO 2025-11-24 07:24:15,158 basehttp 14565 139754797442752 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/ HTTP/1.1" 200 368
+WARNING 2025-11-24 07:24:34,864 basehttp 14565 139754797442752 "POST /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/ HTTP/1.1" 400 188
+INFO 2025-11-24 07:27:40,367 autoreload 14565 139754949386368 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-24 07:27:44,290 autoreload 14587 140638232158336 Watching for file changes with StatReloader
+WARNING 2025-11-24 07:27:56,947 basehttp 14587 140638080116416 "POST /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/ HTTP/1.1" 400 242
+INFO 2025-11-24 07:29:49,063 autoreload 14587 140638232158336 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:29:54,493 autoreload 14605 139644313706624 Watching for file changes with StatReloader
+WARNING 2025-11-24 07:30:04,914 basehttp 14605 139644161140416 "POST /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/ HTTP/1.1" 400 242
+WARNING 2025-11-24 07:31:15,137 basehttp 14605 139644083631808 "POST /api/auth/register/ HTTP/1.1" 400 193
+INFO 2025-11-24 07:31:22,028 basehttp 14605 139644083631808 "POST /api/auth/register/ HTTP/1.1" 201 1100
+INFO 2025-11-24 07:31:57,528 basehttp 14605 139644083631808 "POST /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/ HTTP/1.1" 201 505
+INFO 2025-11-24 07:32:22,413 basehttp 14605 139644083631808 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/30dd3716-8296-4bd4-8639-35b0d38526f0/ HTTP/1.1" 200 505
+INFO 2025-11-24 07:32:46,688 basehttp 14605 139644083631808 "PUT /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/30dd3716-8296-4bd4-8639-35b0d38526f0/ HTTP/1.1" 200 504
+INFO 2025-11-24 07:33:09,688 basehttp 14605 139644083631808 "DELETE /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/members/30dd3716-8296-4bd4-8639-35b0d38526f0/ HTTP/1.1" 204 0
+ERROR 2025-11-24 07:33:39,267 basehttp 14605 139644083631808 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/invitations/ HTTP/1.1" 500 294
+INFO 2025-11-24 07:35:56,389 autoreload 14605 139644313706624 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-24 07:36:06,014 autoreload 14638 139665775227008 Watching for file changes with StatReloader
+WARNING 2025-11-24 07:36:20,732 basehttp 14638 139665555322560 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/invitations/ HTTP/1.1" 401 201
+INFO 2025-11-24 07:37:29,900 basehttp 14638 139665545881280 "POST /api/auth/refresh/ HTTP/1.1" 200 827
+INFO 2025-11-24 07:38:16,661 basehttp 14638 139665545881280 "GET /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/invitations/ HTTP/1.1" 200 2
+ERROR 2025-11-24 07:38:32,603 basehttp 14638 139665545881280 "POST /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/invitations/ HTTP/1.1" 500 140
+INFO 2025-11-24 07:42:31,599 autoreload 14638 139665775227008 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:42:40,038 autoreload 14668 140177054064768 Watching for file changes with StatReloader
+INFO 2025-11-24 07:43:29,711 autoreload 14668 140177054064768 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:43:33,116 autoreload 14680 140619844104320 Watching for file changes with StatReloader
+INFO 2025-11-24 07:43:59,280 autoreload 14680 140619844104320 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:44:01,968 autoreload 14703 140167183294592 Watching for file changes with StatReloader
+INFO 2025-11-24 07:44:07,806 autoreload 14703 140167183294592 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:44:11,034 autoreload 14712 139818335801472 Watching for file changes with StatReloader
+INFO 2025-11-24 07:44:21,462 autoreload 14712 139818335801472 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:44:25,725 autoreload 14723 140518443331712 Watching for file changes with StatReloader
+INFO 2025-11-24 07:44:31,805 autoreload 14723 140518443331712 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:44:35,009 autoreload 14726 139841196179584 Watching for file changes with StatReloader
+INFO 2025-11-24 07:44:55,462 autoreload 14726 139841196179584 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:44:58,115 autoreload 14731 140002445602944 Watching for file changes with StatReloader
+INFO 2025-11-24 07:45:04,277 autoreload 14731 140002445602944 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:45:07,454 autoreload 14738 140640009453696 Watching for file changes with StatReloader
+INFO 2025-11-24 07:46:06,441 autoreload 14764 140449719758976 Watching for file changes with StatReloader
+INFO 2025-11-24 07:46:11,275 autoreload 14764 140449719758976 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:46:14,136 autoreload 14767 140517488427136 Watching for file changes with StatReloader
+INFO 2025-11-24 07:46:21,102 autoreload 14767 140517488427136 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:46:23,729 autoreload 14771 140499923411072 Watching for file changes with StatReloader
+INFO 2025-11-24 07:46:33,431 autoreload 14771 140499923411072 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:46:36,159 autoreload 14775 140194658517120 Watching for file changes with StatReloader
+INFO 2025-11-24 07:46:41,324 autoreload 14775 140194658517120 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:46:44,088 autoreload 14778 140500050210944 Watching for file changes with StatReloader
+INFO 2025-11-24 07:46:55,921 autoreload 14778 140500050210944 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:46:58,685 autoreload 14782 140154618388608 Watching for file changes with StatReloader
+INFO 2025-11-24 07:47:08,109 autoreload 14782 140154618388608 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:47:10,796 autoreload 14785 140280305717376 Watching for file changes with StatReloader
+INFO 2025-11-24 07:47:15,317 autoreload 14785 140280305717376 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:47:17,990 autoreload 14789 140127968039040 Watching for file changes with StatReloader
+INFO 2025-11-24 07:47:28,919 autoreload 14789 140127968039040 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:47:32,167 autoreload 14792 140243218411648 Watching for file changes with StatReloader
+INFO 2025-11-24 07:48:40,096 autoreload 14792 140243218411648 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/serializers.py changed, reloading.
+INFO 2025-11-24 07:48:43,616 autoreload 14811 140567392727168 Watching for file changes with StatReloader
+INFO 2025-11-24 07:48:56,640 basehttp 14811 140567166056128 "POST /api/workspaces/b58f0f73-ea2b-47c0-b779-0432428ea113/invitations/ HTTP/1.1" 201 425
+ERROR 2025-11-24 07:50:18,580 basehttp 14811 140567157663424 "POST /api/workspaces/invitations/accept/ HTTP/1.1" 500 112
+INFO 2025-11-24 07:51:28,235 autoreload 14811 140567392727168 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/views.py changed, reloading.
+INFO 2025-11-24 07:51:32,050 autoreload 14842 140685905211520 Watching for file changes with StatReloader
+WARNING 2025-11-24 07:51:39,055 basehttp 14842 140685680309952 "POST /api/workspaces/invitations/accept/ HTTP/1.1" 400 65
+WARNING 2025-11-24 09:19:35,198 basehttp 14842 140685671917248 "POST /api/auth/login/ HTTP/1.1" 401 95
+INFO 2025-11-24 09:22:14,938 autoreload 14960 139724650975360 Watching for file changes with StatReloader
+INFO 2025-11-24 09:22:49,029 basehttp 14960 139724498839232 "POST /api/auth/register/ HTTP/1.1" 201 1094
+INFO 2025-11-24 09:23:07,712 basehttp 14960 139724498839232 "POST /api/auth/login/ HTTP/1.1" 200 1265
+INFO 2025-11-24 09:23:59,467 basehttp 14960 139724498839232 "POST /api/auth/verify-email/ HTTP/1.1" 200 41
+INFO 2025-11-24 09:25:03,570 basehttp 14960 139724412942016 "POST /api/workspaces/ HTTP/1.1" 201 748
+INFO 2025-11-24 09:25:37,154 basehttp 14960 139724412942016 "POST /api/auth/register/ HTTP/1.1" 201 1100
+INFO 2025-11-24 09:26:19,312 basehttp 14960 139724412942016 "POST /api/auth/verify-email/ HTTP/1.1" 200 41
+INFO 2025-11-24 09:26:46,930 basehttp 14960 139724412942016 "POST /api/auth/register/ HTTP/1.1" 201 1100
+INFO 2025-11-24 09:27:20,203 basehttp 14960 139724412942016 "POST /api/auth/verify-email/ HTTP/1.1" 200 41
+INFO 2025-11-24 09:28:22,525 basehttp 14960 139724404549312 "POST /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/ HTTP/1.1" 201 425
+INFO 2025-11-24 09:29:22,663 basehttp 14960 139724396156608 "POST /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/ HTTP/1.1" 201 424
+WARNING 2025-11-24 09:32:25,819 basehttp 14960 139724387763904 "POST /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/members/ HTTP/1.1" 401 201
+INFO 2025-11-24 12:20:48,833 autoreload 14960 139724650975360 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/models.py changed, reloading.
+INFO 2025-11-24 12:20:55,065 autoreload 15117 139887609241728 Watching for file changes with StatReloader
+INFO 2025-11-24 12:21:06,397 autoreload 15117 139887609241728 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/models.py changed, reloading.
+INFO 2025-11-24 12:21:07,721 autoreload 15121 140716198957184 Watching for file changes with StatReloader
+INFO 2025-11-24 12:27:44,424 autoreload 15121 140716198957184 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/models.py changed, reloading.
+INFO 2025-11-24 12:27:49,471 autoreload 15144 140286115602560 Watching for file changes with StatReloader
+WARNING 2025-11-24 12:28:13,031 basehttp 15144 140285963052736 "POST /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/ HTTP/1.1" 401 201
+INFO 2025-11-24 12:28:22,441 basehttp 15144 140285963052736 "POST /api/auth/login/ HTTP/1.1" 200 1264
+WARNING 2025-11-24 12:28:57,771 basehttp 15144 140285963052736 "POST /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/ HTTP/1.1" 400 244
+ERROR 2025-11-24 12:29:13,552 basehttp 15144 140285963052736 "DELETE /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/1/ HTTP/1.1" 500 162
+INFO 2025-11-24 12:29:41,695 basehttp 15144 140285963052736 "POST /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/ HTTP/1.1" 201 424
+ERROR 2025-11-24 12:30:27,243 basehttp 15144 140285963052736 "DELETE /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/1/ HTTP/1.1" 500 162
+INFO 2025-11-24 12:34:31,556 autoreload 15144 140286115602560 /mnt/c/Users/user/collabspace-ai/backend/collabspace_backend/apps/workspaces/urls.py changed, reloading.
+INFO 2025-11-24 12:34:36,736 autoreload 15177 140696733134976 Watching for file changes with StatReloader
+INFO 2025-11-24 12:34:51,750 basehttp 15177 140696581220032 "DELETE /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/1/ HTTP/1.1" 204 0
+WARNING 2025-11-24 12:35:09,999 basehttp 15177 140696581220032 "POST /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/ HTTP/1.1" 400 244
+INFO 2025-11-24 12:35:23,345 basehttp 15177 140696581220032 "POST /api/auth/login/ HTTP/1.1" 200 1281
+INFO 2025-11-24 12:36:41,489 basehttp 15177 140696571778752 "POST /api/workspaces/invitations/accept/ HTTP/1.1" 200 33
+WARNING 2025-11-24 12:37:11,027 basehttp 15177 140696571778752 "POST /api/workspaces/invitations/decline/ HTTP/1.1" 404 45
+INFO 2025-11-24 12:38:16,348 basehttp 15177 140696563386048 "POST /api/workspaces/ HTTP/1.1" 201 754
+WARNING 2025-11-24 12:38:30,801 basehttp 15177 140696563386048 "POST /api/workspaces/aed6f96a-cf2a-47a4-bae6-9293e0a88c33/invitations/ HTTP/1.1" 403 31
+INFO 2025-11-24 12:39:18,523 basehttp 15177 140696563386048 "POST /api/workspaces/aed6f96a-cf2a-47a4-bae6-9293e0a88c33/invitations/ HTTP/1.1" 201 428
+INFO 2025-11-24 12:39:37,994 basehttp 15177 140696563386048 "POST /api/auth/login/ HTTP/1.1" 200 1281
+INFO 2025-11-24 12:41:32,493 basehttp 15177 140696350619328 "POST /api/workspaces/invitations/decline/ HTTP/1.1" 200 33
+INFO 2025-11-24 12:44:49,558 basehttp 15177 140696342226624 "GET /api/projects/ HTTP/1.1" 200 52
+WARNING 2025-11-24 12:45:06,584 basehttp 15177 140696342226624 "POST /api/projects/ HTTP/1.1" 400 339
+INFO 2025-11-24 12:45:30,770 basehttp 15177 140696342226624 "POST /api/workspaces/ HTTP/1.1" 201 754
+WARNING 2025-11-24 12:45:43,021 basehttp 15177 140696342226624 "POST /api/projects/ HTTP/1.1" 400 339
+WARNING 2025-11-24 12:45:46,411 basehttp 15177 140696342226624 "POST /api/projects/ HTTP/1.1" 400 339
+WARNING 2025-11-24 12:46:24,028 basehttp 15177 140696342226624 "POST /api/projects/ HTTP/1.1" 400 339
+INFO 2025-11-24 14:04:50,186 autoreload 15380 140211054608512 Watching for file changes with StatReloader
+INFO 2025-11-24 14:05:22,657 autoreload 15393 140305044385920 Watching for file changes with StatReloader
