@@ -1,7 +1,0 @@
-.wrap { padding: 6px 0 12px 0; color:var(--gray-600); font-size:0.9rem; }
-.list { display:flex; gap:8px; list-style:none; padding:0; margin:0; align-items:center; }
-.list li a { color:var(--primary-600); text-decoration:none; }
-.list li span { color:var(--gray-800); font-weight:600; }
-.list li::after { content: "›"; margin-left:8px; color:var(--gray-300); }
-.list li:last-child::after { content: ""; }
-.active a { color:var(--gray-800); }
