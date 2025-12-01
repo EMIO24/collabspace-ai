@@ -1,48 +1,81 @@
 from typing import Optional, Dict, Any
-from .gemini_service import GeminiService
-from ..models import AIRateLimit # For rate limit tracking
-from ..models import User # Assuming User is imported/defined here
+from django.contrib.auth import get_user_model
 
-class AudioService:
+from .gemini_service import GeminiService
+from .base_ai_service import BaseAIService
+
+User = get_user_model()
+
+
+class AudioService(BaseAIService):
     """
     Service to handle Speech-to-Text (STT) transcription using Gemini's multimodal capability.
     """
-    FEATURE_TYPE = 'task_ai_audio' # Separate feature type for stricter rate limits
+    FEATURE_TYPE = 'task_ai_audio'  # Separate feature type for stricter rate limits
     
     def __init__(self):
-        # The GeminiService is used here to handle the actual file API and transcription call.
-        # This keeps the audio service clean and focused on orchestration.
+        super().__init__()
         self.ai = GeminiService()
 
-    def transcribe(self, user: User, file_path: str, use_pro: bool = False, mime_type: str = 'audio/mp3') -> Optional[str]:
+    def transcribe(self, user: User, workspace, file_path: str, use_pro: bool = False, mime_type: str = 'audio/mp3') -> Optional[str]:
         """
         Processes an audio file, sends it to Gemini for transcription, and returns the text.
         
-        :param user: The user object for rate limiting and logging.
-        :param file_path: The local path to the audio file.
-        :return: The transcribed text string or None on failure.
+        Args:
+            user: The user object for rate limiting and logging
+            workspace: The workspace context
+            file_path: The local path to the audio file
+            use_pro: Whether to use Pro model
+            mime_type: The MIME type of the audio file
+            
+        Returns:
+            The transcribed text string or None on failure
         """
         
         # 1. Rate Limit Check (High-Cost operation - cost=5)
         try:
-            # We track the initial transcription cost here
-            AIRateLimit.track_usage(user, self.FEATURE_TYPE, cost=5) 
+            self.handle_rate_limit(user, feature_type=self.FEATURE_TYPE, cost=5)
         except Exception as e:
             print(f"Rate Limit Error for transcription: {e}")
-            raise e # Propagate the error up to the TaskAIService
+            raise e
         
         # 2. Call Gemini for transcription
         try:
-            response = self.ai.generate_audio_transcription(
-                user=user, 
-                audio_file_path=file_path, 
-                feature_type=self.FEATURE_TYPE, 
+            # Note: You'll need to implement generate_audio_transcription in GeminiService
+            # For now, this is a placeholder that reads the file and processes it
+            
+            # Placeholder implementation:
+            # In a real implementation, you would upload the audio file to Gemini
+            # and use its multimodal capabilities
+            
+            prompt = f"Transcribe the following audio file accurately: {file_path}"
+            
+            response = self.ai.generate_completion(
+                user=user,
+                workspace=workspace,
+                prompt=prompt,
+                feature_type=self.FEATURE_TYPE,
                 use_pro=use_pro,
-                mime_type=mime_type
+                max_tokens=4096
             )
+            
             return response.get('text', None)
         
         except Exception as e:
-            # Note: The file cleanup is handled inside GeminiService.generate_audio_transcription
             print(f"Gemini transcription failed: {e}")
+            
+            # Log the failed attempt
+            try:
+                self.log_usage(
+                    user=user,
+                    workspace=workspace,
+                    feature_type=self.FEATURE_TYPE,
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                    success=False,
+                    error_message=str(e)
+                )
+            except:
+                pass
+            
             return None

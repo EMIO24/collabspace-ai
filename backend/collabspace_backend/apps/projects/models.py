@@ -93,7 +93,7 @@ class Project(BaseModel):
     completed_task_count = models.IntegerField(default=0)
     member_count = models.IntegerField(default=1)
     
-    # Progress (calculated field)
+    # Progress
     progress = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -133,7 +133,7 @@ class Project(BaseModel):
                 'enable_attachments': True,
                 'auto_archive_completed_tasks': False,
                 'require_task_approval': False,
-                'default_task_view': 'list',  # list, board, timeline, calendar
+                'default_task_view': 'list',
             }
         
         super().save(*args, **kwargs)
@@ -159,11 +159,13 @@ class Project(BaseModel):
             if self.end_date < self.start_date:
                 raise ValidationError('End date must be after start date')
         
-        # Validate color format
+        # Validate color
         if self.color and not self.color.startswith('#'):
             raise ValidationError('Color must be a valid hex code starting with #')
     
+    # ------------------------------
     # Member Management Methods
+    # ------------------------------
     
     def add_member(self, user, role='member', added_by=None):
         """
@@ -173,43 +175,35 @@ class Project(BaseModel):
             user: User instance to add
             role: Member role (owner/admin/member)
             added_by: User who added this member
-            
+        
         Returns:
             ProjectMember instance
-            
+        
         Raises:
-            ValidationError: If user not in workspace or already a member
+            ValidationError: If user not in workspace
         """
-        # Check if user is in workspace
+        # Check workspace membership
         if not self.workspace.is_member(user):
             raise ValidationError(f'{user.email} is not a member of the workspace')
         
-        # Check if user is already a project member
-        if self.is_member(user):
-            raise ValidationError(f'{user.email} is already a member of this project')
-        
-        # Create project membership
-        member = ProjectMember.objects.create(
+        # Create or update member
+        member, created = ProjectMember.objects.get_or_create(
             project=self,
             user=user,
-            role=role,
-            added_by=added_by
+            defaults={'role': role, 'added_by': added_by}
         )
+        
+        if not created and member.role != role:
+            member.role = role
+            member.save(update_fields=['role'])
         
         # Update member count
         self.update_counts()
-        
         return member
     
     def remove_member(self, user):
         """
         Remove a member from the project.
-        
-        Args:
-            user: User instance to remove
-            
-        Raises:
-            ValidationError: If user is the owner or not a member
         """
         if self.is_owner(user):
             raise ValidationError('Cannot remove project owner')
@@ -224,13 +218,6 @@ class Project(BaseModel):
     def update_member_role(self, user, new_role):
         """
         Update a member's role in the project.
-        
-        Args:
-            user: User instance
-            new_role: New role (admin/member)
-            
-        Raises:
-            ValidationError: If trying to change owner role
         """
         if self.is_owner(user):
             raise ValidationError('Cannot change owner role')
@@ -263,47 +250,26 @@ class Project(BaseModel):
         member = ProjectMember.objects.filter(project=self, user=user).first()
         return member.role if member else None
     
-    # Progress & Statistics Methods
+    # ------------------------------
+    # Progress & Statistics
+    # ------------------------------
     
     def calculate_progress(self):
-        """
-        Calculate project completion progress.
-        
-        Returns:
-            Decimal: Progress percentage (0-100)
-        """
+        """Calculate project completion progress."""
         if self.task_count == 0:
             return 0.00
-        
-        progress = (self.completed_task_count / self.task_count) * 100
-        return round(progress, 2)
+        return round((self.completed_task_count / self.task_count) * 100, 2)
     
     def update_counts(self):
         """Update cached task and member counts."""
-        # Update member count
         self.member_count = ProjectMember.objects.filter(project=self).count()
+        # Task counts will be updated when tasks module is added
         
-        # Update task counts (will work when tasks module is added)
-        # from apps.tasks.models import Task
-        # self.task_count = Task.objects.filter(project=self, is_deleted=False).count()
-        # self.completed_task_count = Task.objects.filter(
-        #     project=self, 
-        #     status='done',
-        #     is_deleted=False
-        # ).count()
-        
-        # Update progress
         self.progress = self.calculate_progress()
-        
         self.save(update_fields=['member_count', 'task_count', 'completed_task_count', 'progress'])
     
     def get_statistics(self):
-        """
-        Get comprehensive project statistics.
-        
-        Returns:
-            dict: Project statistics
-        """
+        """Get comprehensive project statistics."""
         return {
             'total_tasks': self.task_count,
             'completed_tasks': self.completed_task_count,
@@ -320,7 +286,6 @@ class Project(BaseModel):
         """Check if project is overdue."""
         if not self.end_date:
             return False
-        
         return timezone.now().date() > self.end_date and self.status != 'completed'
     
     def archive(self):
@@ -341,30 +306,24 @@ class Project(BaseModel):
     
     @property
     def completion_percentage(self):
-        """Get completion percentage (property alias)."""
         return float(self.progress)
     
     @property
     def is_active(self):
-        """Check if project is active."""
         return self.status == 'active'
     
     @property
     def is_archived(self):
-        """Check if project is archived."""
         return self.status == 'archived'
     
     @property
     def is_completed(self):
-        """Check if project is completed."""
         return self.status == 'completed'
     
     @property
     def duration_days(self):
-        """Get project duration in days."""
         if not self.start_date or not self.end_date:
             return None
-        
         return (self.end_date - self.start_date).days
 
 
@@ -375,7 +334,6 @@ class ProjectMember(TimeStampedModel):
     Represents the relationship between a user and a project.
     """
     
-    # Relationships
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
@@ -387,7 +345,6 @@ class ProjectMember(TimeStampedModel):
         related_name='project_memberships'
     )
     
-    # Role
     role = models.CharField(
         max_length=20,
         choices=[
@@ -399,7 +356,6 @@ class ProjectMember(TimeStampedModel):
         db_index=True
     )
     
-    # Tracking
     added_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -426,19 +382,15 @@ class ProjectMember(TimeStampedModel):
         return f'{self.user.email} - {self.project.name} ({self.role})'
     
     def can_manage_project(self):
-        """Check if member can manage project settings."""
         return self.role in ['owner', 'admin']
     
     def can_add_members(self):
-        """Check if member can add other members."""
         return self.role in ['owner', 'admin']
     
     def can_create_tasks(self):
-        """Check if member can create tasks."""
-        return True  # All members can create tasks
+        return True
     
     def can_delete_tasks(self):
-        """Check if member can delete tasks."""
         return self.role in ['owner', 'admin']
 
 

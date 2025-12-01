@@ -297,6 +297,20 @@ class AIRateLimit(models.Model):
         limit_obj.increment_usage(tokens=tokens, cost=cost)
         
         return limit_obj
+
+def can_make_request(self, feature_type=None, cost=1):
+    """Check if user can make an AI request within rate limits."""
+    self.reset_if_needed()
+    
+    # Check minute limit
+    if self.requests_this_minute + cost > self.minute_limit:
+        return False
+    
+    # Check daily limit
+    if self.requests_today + cost > self.daily_limit:
+        return False
+    
+    return True
         
         
 class AICache(models.Model):

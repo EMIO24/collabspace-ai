@@ -6,8 +6,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db import transaction
 from django.conf import settings
+from django.contrib.auth.hashers import make_password
+from django.db.models import Q
 import secrets
-import hashlib # For password hashing in SharedLink
 
 from .models import File, FileVersion, SharedLink
 from .serializers import *
@@ -19,16 +20,36 @@ class FileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-    def get_queryset(self):
-        # Filter files by workspaces the user belongs to (requires proper User/Workspace relationship)
-        user_workspaces = self.request.user.workspaces.all() # Assuming User.workspaces is the relationship
-        queryset = File.objects.filter(workspace__in=user_workspaces).select_related('uploaded_by', 'workspace')
+    def _get_allowed_workspace_ids(self):
+        """
+        Get a set of workspace IDs that the current user has access to.
+        Checks both 'owned_workspaces' and 'workspace_memberships'.
+        """
+        user = self.request.user
+        
+        # 1. IDs of workspaces the user owns
+        owned_ids = user.owned_workspaces.values_list('id', flat=True)
+        
+        # 2. IDs of workspaces where user is an ACTIVE member
+        # Note: We filter by is_active=True based on your WorkspaceMember model
+        member_ids = user.workspace_memberships.filter(is_active=True).values_list('workspace_id', flat=True)
+        
+        # 3. Return union of IDs
+        return owned_ids.union(member_ids)
 
+    def get_queryset(self):
+        # Use the ID list to filter. This avoids the "Cannot use QuerySet for File" error
+        # because we are passing raw UUIDs, which Django handles perfectly for ForeignKeys.
+        allowed_ids = self._get_allowed_workspace_ids()
+        
+        queryset = File.objects.filter(workspace_id__in=allowed_ids).select_related('uploaded_by', 'workspace')
+
+        # Filter by specific workspace if requested
         workspace_id = self.request.query_params.get('workspace')
         if workspace_id:
             queryset = queryset.filter(workspace_id=workspace_id)
 
-        # Filter by related object
+        # Filter by related object (polymorphic association)
         related_type = self.request.query_params.get('related_type')
         related_id = self.request.query_params.get('related_id')
         if related_type and related_id:
@@ -46,10 +67,13 @@ class FileViewSet(viewsets.ModelViewSet):
         if not file_obj or not workspace_id:
             return Response({'error': 'File and workspace ID are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Validate permissions (ensure user belongs to the workspace)
-        # Add your actual permission check here, e.g.,
-        # if not self.request.user.workspaces.filter(id=workspace_id).exists():
-        #     return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        # 1. Validate permissions
+        # We explicitly check if the requested workspace_id is in the user's allowed list
+        allowed_ids = self._get_allowed_workspace_ids()
+        # Convert workspace_id to string for comparison if it's a UUID object, or rely on QuerySet check
+        # simpler: check if the specific ID exists in our allowed list query
+        if str(workspace_id) not in [str(uid) for uid in allowed_ids]:
+            return Response({'error': 'Permission denied. You do not have access to this workspace.'}, status=status.HTTP_403_FORBIDDEN)
 
         # 2. Validate file against size/type limits
         is_valid, message = CloudinaryService.validate_file(file_obj)
@@ -68,42 +92,60 @@ class FileViewSet(viewsets.ModelViewSet):
         if not upload_result['success']:
             return Response({'error': upload_result['error']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 5. Create File record in transaction
-        with transaction.atomic():
-            file_record = File.objects.create(
-                workspace_id=workspace_id,
-                uploaded_by=request.user,
-                file_name=file_obj.name,
-                file_size=file_obj.size, # Use Django file size for consistency
-                file_type=file_obj.content_type,
-                cloudinary_public_id=upload_result['public_id'],
-                cloudinary_url=upload_result['url'],
-                width=upload_result.get('width'),
-                height=upload_result.get('height'),
-                duration=upload_result.get('duration'),
-                related_to_type=request.data.get('related_to_type'),
-                related_to_id=request.data.get('related_to_id'),
-                is_public=request.data.get('is_public', False)
-            )
+        # 5. Create File record with Cleanup Strategy
+        try:
+            with transaction.atomic():
+                file_record = File.objects.create(
+                    workspace_id=workspace_id,
+                    uploaded_by=request.user,
+                    file_name=file_obj.name,
+                    file_size=file_obj.size,
+                    file_type=file_obj.content_type,
+                    cloudinary_public_id=upload_result['public_id'],
+                    cloudinary_url=upload_result['url'],
+                    width=upload_result.get('width'),
+                    height=upload_result.get('height'),
+                    duration=upload_result.get('duration'),
+                    related_to_type=request.data.get('related_to_type'),
+                    related_to_id=request.data.get('related_to_id'),
+                    is_public=request.data.get('is_public', False)
+                )
 
-            # Generate thumbnail
-            thumbnail_url = CloudinaryService.generate_thumbnail(
-                upload_result['public_id'], file_record.file_type
-            )
-            if thumbnail_url:
-                file_record.thumbnail_url = thumbnail_url
-                file_record.save(update_fields=['thumbnail_url'])
+                # Generate thumbnail
+                thumbnail_url = CloudinaryService.generate_thumbnail(
+                    upload_result['public_id'], file_record.file_type
+                )
+                if thumbnail_url:
+                    file_record.thumbnail_url = thumbnail_url
+                    file_record.save(update_fields=['thumbnail_url'])
 
-            serializer = self.get_serializer(file_record)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                serializer = self.get_serializer(file_record)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            # CLEANUP STRATEGY:
+            # Database creation failed, so we must delete the orphaned file from Cloudinary
+            CloudinaryService.delete_file(upload_result['public_id'], file_obj.content_type)
+            return Response({'error': f'Database error, upload rolled back: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, pk=None):
         """Delete file from Cloudinary and database"""
         file_obj = self.get_object()
 
-        # Check deletion permission (e.g., owner or uploaded_by)
-        # if file_obj.uploaded_by != request.user and file_obj.workspace.owner != request.user:
-        #     return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        # Check deletion permission
+        workspace = file_obj.workspace
+        is_owner = workspace.owner == request.user
+        is_uploader = file_obj.uploaded_by == request.user
+        
+        # Also check if user is an 'admin' in the workspace via WorkspaceMember
+        is_admin = request.user.workspace_memberships.filter(
+            workspace=workspace, 
+            role__in=['admin', 'owner'],
+            is_active=True
+        ).exists()
+        
+        if not (is_uploader or is_owner or is_admin):
+            return Response({'error': 'Permission denied. Only the uploader, admin, or workspace owner can delete files.'}, status=status.HTTP_403_FORBIDDEN)
 
         with transaction.atomic():
             # Delete versions from Cloudinary first
@@ -136,7 +178,9 @@ class FileViewSet(viewsets.ModelViewSet):
 
         token = secrets.token_urlsafe(32)
         password = request.data.get('password')
-        hashed_password = hashlib.sha256(password.encode()).hexdigest() if password else None
+        
+        # Use Django make_password for secure hashing
+        hashed_password = make_password(password) if password else None
 
         shared_link = SharedLink.objects.create(
             file=file_obj,
@@ -159,7 +203,12 @@ class FileViewSet(viewsets.ModelViewSet):
         if not new_file:
             return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validation (re-use the main validation logic)
+        # Permission check: Ensure user still has access to the workspace of this file
+        allowed_ids = self._get_allowed_workspace_ids()
+        if file_obj.workspace_id not in allowed_ids:
+             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Validation
         is_valid, message = CloudinaryService.validate_file(new_file)
         if not is_valid:
             return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
@@ -167,30 +216,33 @@ class FileViewSet(viewsets.ModelViewSet):
         if new_file.content_type.startswith('image/'):
             new_file = CloudinaryService.compress_image(new_file)
 
-        with transaction.atomic():
-            # Upload new version
-            upload_result = CloudinaryService.upload_file(
-                new_file,
-                folder=f"workspace_{file_obj.workspace_id}/versions/{file_obj.id}"
-            )
+        # Upload first
+        upload_result = CloudinaryService.upload_file(
+            new_file,
+            folder=f"workspace_{file_obj.workspace_id}/versions/{file_obj.id}"
+        )
 
-            if not upload_result['success']:
-                return Response({'error': upload_result['error']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if not upload_result['success']:
+            return Response({'error': upload_result['error']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # Create version record
-            version_number = file_obj.versions.count() + 1
-            version = FileVersion.objects.create(
-                file=file_obj,
-                version_number=version_number,
-                cloudinary_public_id=upload_result['public_id'],
-                cloudinary_url=upload_result['url'],
-                file_size=new_file.size,
-                uploaded_by=request.user,
-                change_description=request.data.get('description', '')
-            )
-
-            serializer = FileVersionSerializer(version, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            with transaction.atomic():
+                version_number = file_obj.versions.count() + 1
+                version = FileVersion.objects.create(
+                    file=file_obj,
+                    version_number=version_number,
+                    cloudinary_public_id=upload_result['public_id'],
+                    cloudinary_url=upload_result['url'],
+                    file_size=new_file.size,
+                    uploaded_by=request.user,
+                    change_description=request.data.get('description', '')
+                )
+                serializer = FileVersionSerializer(version, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            # Cleanup Orphaned Cloudinary file
+            CloudinaryService.delete_file(upload_result['public_id'], new_file.content_type)
+            return Response({'error': f'Database error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['get'])
     def versions(self, request, pk=None):
@@ -233,7 +285,8 @@ class SharedFileView(APIView):
             # Check password
             password = request.query_params.get('password')
             if shared_link.password:
-                if not password or hashlib.sha256(password.encode()).hexdigest() != shared_link.password:
+                # Use the model's check_password method (wraps django.contrib.auth.hashers)
+                if not password or not shared_link.check_password(password):
                     return Response({'error': 'Invalid password'}, status=status.HTTP_403_FORBIDDEN)
 
             # Increment counts in a transaction
@@ -262,9 +315,17 @@ class FileStorageStatsView(APIView):
         if not workspace_id:
             return Response({'error': 'Workspace ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check permission (ensure user belongs to the workspace)
-        # if not request.user.workspaces.filter(id=workspace_id).exists():
-        #     return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        # Check permission: Manually verify against user's owned/member workspaces
+        user = request.user
+        
+        # 1. Check ownership
+        is_owner = user.owned_workspaces.filter(id=workspace_id).exists()
+        
+        # 2. Check membership
+        is_member = user.workspace_memberships.filter(workspace_id=workspace_id, is_active=True).exists()
+        
+        if not (is_owner or is_member):
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         from django.db.models import Sum, Count
         stats = File.objects.filter(workspace_id=workspace_id).aggregate(

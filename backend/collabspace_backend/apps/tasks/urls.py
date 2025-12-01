@@ -15,8 +15,6 @@ from .views import (
     TaskTemplateViewSet
 )
 
-app_name = 'tasks'
-
 # Initialize router and register all ViewSets
 router = DefaultRouter()
 router.register(r'tasks', TaskViewSet, basename='task')
@@ -27,9 +25,10 @@ router.register(r'templates', TaskTemplateViewSet, basename='template')
 
 # Define URL patterns
 urlpatterns = [
+    # Custom standalone endpoint for task statistics
+    # Remove 'tasks/' prefix since it's already in the main urls.py
+    path('stats/', TaskStatsView.as_view(), name='task-stats'),  # Changed from 'tasks/stats/'
+    
     # Include all router-generated URLs (CRUD for tasks, comments, etc.)
     path('', include(router.urls)),
-    
-    # Custom standalone endpoint for task statistics
-    path('tasks/stats/', TaskStatsView.as_view(), name='task-stats'),
 ]

@@ -1,6 +1,6 @@
 import uuid
 import secrets
-from django.db import models
+from django.db import models, IntegrityError, transaction  # Added transaction import
 from django.utils import timezone
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
@@ -107,38 +107,39 @@ class Workspace(BaseModel):
     
     def add_member(self, user, role='member', invited_by=None):
         """
-        Add a member to the workspace.
-        
-        Args:
-            user: User instance to add
-            role: Member role (owner/admin/member/guest)
-            invited_by: User who invited this member
-            
-        Returns:
-            WorkspaceMember instance
-            
-        Raises:
-            ValidationError: If member limit reached or user already member
+        Add a member to the workspace, handling reactivation of soft-deleted users.
         """
-        # Check if user is already an active member
-        if self.is_member(user):
-            raise ValidationError(f'{user.email} is already an active member of this workspace')
-        
         # Check plan limits
         if not self.can_add_member():
             raise ValidationError('Member limit reached for your plan')
-        
-        # Create membership
-        member = WorkspaceMember.objects.create(
-            workspace=self,
-            user=user,
-            role=role,
-            invited_by=invited_by
-        )
-        
-        # Update member count
+
+        try:
+            # FIX: Wrap the create in a nested atomic block.
+            # This creates a savepoint. If IntegrityError happens, it rolls back
+            # only this block, keeping the main transaction healthy for the recovery query.
+            with transaction.atomic():
+                member = WorkspaceMember.objects.create(
+                    workspace=self,
+                    user=user,
+                    role=role,
+                    invited_by=invited_by,
+                    is_active=True
+                )
+        except IntegrityError:
+            # User exists but is likely soft-deleted (inactive).
+            # Use .all() to bypass the default manager that might hide inactive records.
+            member = WorkspaceMember.objects.all().filter(workspace=self, user=user).first()
+
+            if member:
+                member.is_active = True
+                member.role = role
+                member.invited_by = invited_by
+                member.save()
+            else:
+                # Rare edge case: IntegrityError raised but record not found
+                raise ValidationError("An unexpected database error occurred while adding the member.")
+
         self.update_counts()
-        
         return member
     
     def remove_member(self, user):
@@ -519,7 +520,7 @@ class WorkspaceInvitation(TimeStampedModel):
         
         if not self.expires_at:
             self.expires_at = timezone.now() + timedelta(days=7)
-
+            
         # Auto-set status to EXPIRED if past expiry and still pending
         if self.status == self.STATUS_PENDING and timezone.now() > self.expires_at:
             self.status = self.STATUS_EXPIRED
@@ -653,7 +654,7 @@ The CollabSpace Team
         delta = self.expires_at - timezone.now()
         return delta.days
 
-        
+
 class WorkspaceActivity(TimeStampedModel):
     """
     Workspace activity log model.

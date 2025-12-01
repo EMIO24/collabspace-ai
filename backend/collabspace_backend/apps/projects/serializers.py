@@ -190,7 +190,11 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         project = Project.objects.create(**validated_data)
         
         # Add owner as project member
-        project.add_member(request.user, role='owner')
+        ProjectMember.objects.get_or_create(
+            project=project,
+            user=request.user,
+            defaults={'role': 'owner', 'added_by': request.user}
+        )
         
         # Apply template if provided
         if template_id:
@@ -201,7 +205,6 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
                 pass
         
         return project
-
 
 class ProjectUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating projects."""

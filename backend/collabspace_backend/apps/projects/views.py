@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 from django.db.models import Q, Count, Prefetch
 import csv
 import json
@@ -45,7 +46,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         
         # Get projects from workspaces user is a member of
         queryset = Project.objects.filter(
-            Q(workspace__members__user=user) | Q(owner=user),
+            Q(workspace__members__user=user, workspace__members__is_active=True) | Q(owner=user),
             is_deleted=False
         ).select_related(
             'workspace', 'owner'
@@ -91,6 +92,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return ProjectUpdateSerializer
         return ProjectDetailSerializer
     
+    def create(self, request, *args, **kwargs):
+        """Create a new project."""
+        # Validate and create
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        project = serializer.save()
+        
+        # Log activity
+        ProjectActivity.objects.create(
+            project=project,
+            user=request.user,
+            action='created',
+            description=f'{request.user.get_full_name()} created project {project.name}'
+        )
+        
+        # Return detailed response
+        output_serializer = ProjectDetailSerializer(project, context={'request': request})
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+    
     def perform_destroy(self, instance):
         """Soft delete project."""
         instance.soft_delete(user=self.request.user)
@@ -113,18 +133,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         project = self.get_object()
         
         # This will be implemented when tasks module is added
-        # from apps.tasks.models import Task
-        # tasks_by_status = {}
-        # for status_choice in ['todo', 'in_progress', 'review', 'done']:
-        #     tasks = Task.objects.filter(
-        #         project=project,
-        #         status=status_choice,
-        #         is_deleted=False
-        #     ).select_related('assigned_to', 'created_by')
-        #     tasks_by_status[status_choice] = TaskSerializer(tasks, many=True).data
-        
         return Response({
-            'project': ProjectDetailSerializer(project).data,
+            'project': ProjectDetailSerializer(project, context={'request': request}).data,
             'board': {
                 'todo': [],
                 'in_progress': [],
@@ -141,12 +151,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
         GET /api/projects/{id}/timeline/
         """
         project = self.get_object()
-        
-        # This will be implemented when tasks module is added
-        # tasks = Task.objects.filter(
-        #     project=project,
-        #     is_deleted=False
-        # ).order_by('start_date')
         
         timeline_data = {
             'project': {
@@ -173,7 +177,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
         month = request.query_params.get('month')
         year = request.query_params.get('year')
         
-        # This will be implemented when tasks module is added
         calendar_data = {
             'project_id': str(project.id),
             'project_name': project.name,
@@ -218,13 +221,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
         )
         
         # Add owner as member
-        new_project.add_member(request.user, role='owner')
+        new_project.add_member(request.user, role='owner', added_by=request.user)
         
         # Duplicate members
         if include_members:
             for member in original_project.members.all():
                 if member.user != request.user:  # Owner already added
-                    new_project.add_member(member.user, role=member.role, added_by=request.user)
+                    try:
+                        new_project.add_member(member.user, role=member.role, added_by=request.user)
+                    except ValidationError:
+                        pass  # Skip if member can't be added
         
         # Duplicate labels
         if include_labels:
@@ -236,11 +242,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     description=label.description,
                     created_by=request.user
                 )
-        
-        # Duplicate tasks (when tasks module is added)
-        # if include_tasks:
-        #     for task in original_project.tasks.filter(is_deleted=False):
-        #         # Create duplicate task
         
         # Log activity
         ProjectActivity.objects.create(
@@ -341,7 +342,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             response = Response(data)
             response['Content-Disposition'] = f'attachment; filename="{project.slug}.json"'
             return response
-
 
 class ProjectMemberViewSet(viewsets.ViewSet):
     """

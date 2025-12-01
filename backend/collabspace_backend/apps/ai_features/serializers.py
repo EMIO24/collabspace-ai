@@ -1,7 +1,7 @@
 import uuid
 from rest_framework import serializers
 from .models import AIUsage, AIPromptTemplate, AIRateLimit
-from .utils import estimate_tokens # Use local utility
+from .utils import estimate_tokens
 
 
 # --- Model Serializers ---
@@ -17,12 +17,14 @@ class AIUsageSerializer(serializers.ModelSerializer):
     def get_estimated_cost(self, obj):
         return obj.estimate_cost()
 
+
 class AIPromptTemplateSerializer(serializers.ModelSerializer):
     """Serializer for the AIPromptTemplate model."""
     class Meta:
         model = AIPromptTemplate
         fields = '__all__'
         read_only_fields = ['created_by']
+
 
 class AIRateLimitSerializer(serializers.ModelSerializer):
     """Serializer for the AIRateLimit model, showing quota status."""
@@ -37,10 +39,14 @@ class AIRateLimitSerializer(serializers.ModelSerializer):
                   'requests_remaining_today', 'requests_remaining_minute')
 
     def get_can_make_request(self, obj):
-        return obj.can_make_request()
+        try:
+            return obj.can_make_request(feature_type='general', cost=1)
+        except TypeError as e:
+            print(f"Serializer: can_make_request error: {e}")
+            obj.reset_if_needed()
+            return obj.requests_today < obj.daily_limit
 
     def get_requests_remaining_today(self, obj):
-        # We must call reset_if_needed implicitly to ensure accurate counts
         obj.reset_if_needed()
         return max(0, obj.daily_limit - obj.requests_today)
 
@@ -52,53 +58,94 @@ class AIRateLimitSerializer(serializers.ModelSerializer):
 # --- Input Serializers (API Validation) ---
 
 class TaskAISummarizeSerializer(serializers.Serializer):
+    """Serializer for task summarization."""
     task_description = serializers.CharField(max_length=5000)
 
+
 class TaskAICreateSerializer(serializers.Serializer):
+    """Serializer for creating tasks from text."""
     text = serializers.CharField(max_length=10000)
     workspace_id = serializers.UUIDField()
     project_id = serializers.UUIDField(required=False)
 
+
 class TaskAIBreakdownSerializer(serializers.Serializer):
-    task_id = serializers.UUIDField(required=False)
-    task_description = serializers.CharField(max_length=5000, required=False)
+    """Serializer for breaking down tasks into subtasks."""
+    task_id = serializers.UUIDField(required=False, allow_null=True)
+    task_description = serializers.CharField(max_length=5000, required=False, allow_blank=True)
     num_subtasks = serializers.IntegerField(default=5, min_value=2, max_value=10)
     auto_create = serializers.BooleanField(default=False)
+    
+    def validate(self, data):
+        """Ensure at least one of task_id or task_description is provided."""
+        task_id = data.get('task_id')
+        task_description = data.get('task_description')
+        
+        if not task_id and not task_description:
+            raise serializers.ValidationError({
+                'task_description': 'Either task_id or task_description must be provided.'
+            })
+        
+        return data
+
 
 class TaskAIEstimateSerializer(serializers.Serializer):
+    """Serializer for task effort estimation."""
     task_description = serializers.CharField(max_length=5000)
-    project_context = serializers.CharField(max_length=5000, required=False)
+    project_context = serializers.CharField(max_length=5000, required=False, allow_blank=True)
+
 
 class TaskAIPrioritySerializer(serializers.Serializer):
+    """Serializer for task priority suggestion."""
     task_description = serializers.CharField(max_length=5000)
-    due_date = serializers.CharField(max_length=255, required=False)
+    due_date = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
 
 class TaskAIAssigneeSerializer(serializers.Serializer):
-    task_id = serializers.UUIDField(required=False)
-    task_description = serializers.CharField(max_length=5000, required=False)
+    """Serializer for suggesting task assignee."""
+    task_id = serializers.UUIDField(required=False, allow_null=True)
+    task_description = serializers.CharField(max_length=5000, required=False, allow_blank=True)
     team_members = serializers.ListField(
         child=serializers.DictField(),
         min_length=1
     )
+    
+    def validate(self, data):
+        """Ensure at least one of task_id or task_description is provided."""
+        task_id = data.get('task_id')
+        task_description = data.get('task_description')
+        
+        if not task_id and not task_description:
+            raise serializers.ValidationError({
+                'task_description': 'Either task_id or task_description must be provided.'
+            })
+        
+        return data
+
 
 class MeetingTranscribeSerializer(serializers.Serializer):
+    """Serializer for meeting transcript processing."""
     transcript = serializers.CharField(max_length=50000)
     auto_create_tasks = serializers.BooleanField(default=False)
-    project_id = serializers.UUIDField(required=False)
+    project_id = serializers.UUIDField(required=False, allow_null=True)
     
+
 class AnalyticsForecastSerializer(serializers.Serializer):
-    project_id = serializers.UUIDField()
+    """Serializer for analytics forecasting."""
+    project_id = serializers.UUIDField(required=False, allow_null=True)
     confidence_level = serializers.ChoiceField(
         choices=['low', 'medium', 'high'],
         default='medium'
     )
     
+
 class AssistantChatSerializer(serializers.Serializer):
+    """Serializer for AI assistant chat."""
     message = serializers.CharField(max_length=2000)
     context = serializers.JSONField(required=False)
     conversation_history = serializers.ListField(
         child=serializers.JSONField(),
-        required=False
+        required=False,
+        default=list
     )
-    # This is validated by permissions.CanUseAdvancedAI in the view
     use_pro_model = serializers.BooleanField(default=False)

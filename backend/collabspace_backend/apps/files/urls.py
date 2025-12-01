@@ -8,10 +8,10 @@ router = DefaultRouter()
 router.register('', FileViewSet, basename='file')
 
 urlpatterns = [
-    # DRF ViewSet URLs
-    path('', include(router.urls)),
-    
-    # Custom URLs
+        # Custom URLs
     path('shared/<str:token>/', SharedFileView.as_view(), name='shared-file'),
     path('storage-stats/', FileStorageStatsView.as_view(), name='storage-stats'),
+
+    # DRF ViewSet URLs
+    path('', include(router.urls)),
 ]

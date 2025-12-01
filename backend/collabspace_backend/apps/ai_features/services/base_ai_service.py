@@ -1,84 +1,99 @@
-import time
-import json
-from typing import Optional, Any, Dict
-import google.generativeai as genai
-
-# Local imports
-from ..models import AIUsage
-from ..utils import estimate_tokens, truncate_for_context, get_user_rate_limit
-
-# Compatibility: APIError for latest genai package
-APIError = getattr(genai, "Error", Exception)
+from typing import Optional, Dict, Any, Union
+from django.conf import settings
+from apps.ai_features.models import AIRateLimit, AIUsage
 
 
 class BaseAIService:
-    """Base class for AI service providers, handling usage, limits, retries, and errors."""
-
+    """Base class for all AI services with common rate limiting and logging."""
+    
+    # Each service should define its feature type
+    FEATURE_TYPE: str = 'general'
+    
     def __init__(self):
-        self.max_retries = 3
-        self.timeout = 30  # seconds
-        # RateLimitHandler logic is merged into AIRateLimit model and checks
-        self.rate_limit_model = get_user_rate_limit
-
-    def count_tokens(self, text: str) -> int:
-        """Estimate token count (approx 1 token per 4 chars)."""
-        return estimate_tokens(text)
-
-    def handle_rate_limit(self, user) -> bool:
-        """Check and enforce user-specific AI rate limits."""
-        rate_limit = self.rate_limit_model(user)
-        return rate_limit.can_make_request()
-
-    def track_usage(
-        self,
-        user,
-        feature_type: str,
-        model_used: str,
-        success: bool,
-        prompt_tokens: int,
-        completion_tokens: int,
-        processing_time: float,
-        request_data: Dict[str, Any],
-        response_data: Dict[str, Any],
-        error_message: Optional[str] = None,
-    ):
-        """Track AI usage for quota management."""
+        """Initialize the base service."""
+        pass
+    
+    def handle_rate_limit(self, user: Any, feature_type: Optional[str] = None, cost: int = 1) -> bool:
+        """
+        Check if user can make a request based on rate limits.
+        
+        Args:
+            user: The user making the request (Django User object or similar).
+            feature_type: The type of feature being accessed (defaults to self.FEATURE_TYPE).
+            cost: The cost/weight of this request (default 1).
+            
+        Returns:
+            bool: True if request is allowed.
+            
+        Raises:
+            Exception: If rate limit is exceeded (with descriptive message).
+        """
+        # Use the provided feature_type or fall back to the service's default
+        if feature_type is None:
+            feature_type = getattr(self, 'FEATURE_TYPE', 'general')
+        
+        # Get or create rate limit object
+        rate_limit, _ = AIRateLimit.objects.get_or_create(user=user)
+        
+        # Check if request can be made
+        if not rate_limit.can_make_request(feature_type=feature_type, cost=cost):
+            # Provide specific feedback on which limit failed
+            if not rate_limit.check_minute_limit():
+                raise Exception("Per-minute rate limit exceeded. Please wait a moment.")
+            
+            feature_limit = AIRateLimit.get_feature_limit(feature_type)
+            raise Exception(
+                f"Daily usage limit exceeded for feature '{feature_type}'. "
+                f"Used {rate_limit.feature_cost_today}, Limit {feature_limit}."
+            )
+        
+        return True
+    
+    def log_usage(self, 
+                  user: Any, 
+                  feature_type: str, 
+                  prompt_tokens: int, 
+                  completion_tokens: int, 
+                  workspace: Any, 
+                  model_used: str = 'gemini-2.0-flash-exp', 
+                  provider: str = 'gemini', 
+                  success: bool = True, 
+                  error_message: Optional[str] = None, 
+                  processing_time: Optional[float] = None, 
+                  request_data: Optional[Dict[str, Any]] = None, 
+                  response_data: Optional[Dict[str, Any]] = None):
+        """
+        Log AI usage to the database.
+        """
         total_tokens = prompt_tokens + completion_tokens
-
-        usage_log = AIUsage.objects.create(
+        
+        AIUsage.objects.create(
             user=user,
+            workspace=workspace,  # Required field
             feature_type=feature_type,
+            provider=provider,
             model_used=model_used,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             total_tokens=total_tokens,
             processing_time=processing_time,
-            request_data=truncate_for_context(json.dumps(request_data), max_tokens=1000),
-            response_data=truncate_for_context(json.dumps(response_data), max_tokens=1000),
+            request_data=request_data,
+            response_data=response_data,
             success=success,
             error_message=error_message,
-        )
-
-        # Rate limit counters are automatically updated via signals (post_save)
-        return usage_log
-
-    def handle_error(self, error: Exception, attempt: int) -> Optional[int]:
-        """Handle Gemini API errors gracefully, returning time to wait for retry."""
-        if isinstance(error, APIError):
-            error_message = str(error).lower()
-
-            # Retry for transient errors
-            if "rate limit" in error_message or "unavailable" in error_message or "timeout" in error_message:
-                wait_time = 2 ** attempt  # Exponential backoff
-                print(f"Transient error ({error_message}). Retrying in {wait_time}s. Attempt {attempt}/{self.max_retries}")
-                return wait_time
-
-            # Do not retry for content safety or bad request errors
-            if "safety" in error_message or "invalid" in error_message or "bad request" in error_message:
-                print(f"Non-retriable API error: {error_message}")
-                return None
-
-        # Retry all other errors with exponential backoff
-        wait_time = 2 ** attempt
-        print(f"Generic error: {error}. Retrying in {wait_time}s. Attempt {attempt}/{self.max_retries}")
-        return wait_time
+        ) 
+           
+    def estimate_tokens(self, text: str) -> int:
+        """
+        Estimate token count for text.
+        Simple estimation: ~4 characters per token for English text.
+        
+        Args:
+            text: The text to estimate tokens for.
+            
+        Returns:
+            int: Estimated token count.
+        """
+        if not text:
+            return 0
+        return len(text) // 4

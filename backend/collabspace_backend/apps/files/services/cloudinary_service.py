@@ -3,6 +3,7 @@ import cloudinary.uploader
 from django.conf import settings
 from PIL import Image
 import io
+import magic  # Requires: pip install python-magic
 import mimetypes
 
 class CloudinaryService:
@@ -23,6 +24,7 @@ class CloudinaryService:
         """Upload file to Cloudinary"""
         try:
             # Determine resource type
+            # Note: We trust the validated content_type from validate_file here
             file_type = file.content_type if hasattr(file, 'content_type') else mimetypes.guess_type(file.name)[0]
             resource_type = kwargs.pop('resource_type', CloudinaryService._get_resource_type(file_type))
 
@@ -34,7 +36,7 @@ class CloudinaryService:
                 overwrite=False,
                 use_filename=True,
                 unique_filename=True,
-                **kwargs # Allow passing additional options
+                **kwargs
             )
             return {
                 'success': True,
@@ -44,7 +46,7 @@ class CloudinaryService:
                 'width': result.get('width'),
                 'height': result.get('height'),
                 'bytes': result.get('bytes'),
-                'duration': result.get('duration') # for video/audio
+                'duration': result.get('duration')
             }
         except Exception as e:
             return {
@@ -76,7 +78,6 @@ class CloudinaryService:
                 fetch_format='auto'
             )
         elif file_type.startswith('video/') or file_type.startswith('audio/'):
-             # Generate a thumbnail for video/audio (e.g., first frame)
              return CloudinaryImage(public_id).build_url(
                 resource_type="video",
                 transformation=[
@@ -87,56 +88,78 @@ class CloudinaryService:
         return None
 
     @staticmethod
-    def get_optimized_url(public_id, **transformations):
-        """Get optimized URL with transformations"""
-        from cloudinary import CloudinaryImage
-        return CloudinaryImage(public_id).build_url(**transformations)
-
-    @staticmethod
     def validate_file(file):
-        """Validate file before upload"""
+        """
+        Validate file using python-magic for true type detection 
+        and check size limits.
+        """
+        # 1. Check file size
         max_size_mb = settings.FILE_UPLOAD_MAX_SIZE / (1024 * 1024)
-
-        # Check file size
         if file.size > settings.FILE_UPLOAD_MAX_SIZE:
             return False, f"File size exceeds {max_size_mb:.0f}MB limit"
 
-        # Check file type
-        if file.content_type not in settings.ALLOWED_FILE_TYPES:
-            # Fallback check
-            guessed_type, _ = mimetypes.guess_type(file.name)
-            if guessed_type and guessed_type in settings.ALLOWED_FILE_TYPES:
-                file.content_type = guessed_type
-            else:
-                return False, f"File type '{file.content_type}' not allowed"
+        # 2. Check file type using Magic Bytes (Header inspection)
+        try:
+            # Read the first 2KB to determine type, then reset pointer
+            initial_pos = file.tell()
+            head = file.read(2048)
+            file.seek(initial_pos)
+            
+            mime_type = magic.from_buffer(head, mime=True)
+            
+            if mime_type not in settings.ALLOWED_FILE_TYPES:
+                return False, f"File type '{mime_type}' not allowed"
+            
+            # Update the Django file object with the correct, verified type
+            file.content_type = mime_type
+            
+        except Exception as e:
+            return False, f"Failed to validate file type: {str(e)}"
 
         return True, "Valid"
 
     @staticmethod
     def compress_image(file, quality=85):
-        """Compress image before upload (for JPEG format)"""
+        """
+        Compress image with safety checks for 'Decompression Bomb' attacks
+        and memory limits.
+        """
         if not file.content_type.startswith('image/'):
             return file
 
         try:
+            # Prevent DecompressionBombError for huge images (limit pixels)
+            # Standard limit is usually around 178MP.
+            Image.MAX_IMAGE_PIXELS = 90000000 # Limit to ~90MP to be safe
+
             img = Image.open(file)
+            
+            # Safety: If image is absurdly large in dimensions but small in file size (compression bomb)
+            # Verify dimensions before processing
+            if img.width > 10000 or img.height > 10000:
+                # Skip compression for ultra-large dimensions to prevent memory exhaustion
+                return file
+
             output = io.BytesIO()
 
             # Convert RGBA to RGB for JPEG compression
-            if img.mode == 'RGBA':
+            if img.mode in ('RGBA', 'P'):
                 img = img.convert('RGB')
 
-            # Use JPEG for compression as it's efficient for this task
+            # Compress
             img.save(output, format='JPEG', quality=quality, optimize=True)
             output.seek(0)
             
-            # Create a mock UploadedFile object/adjust attributes
+            # Create a mock UploadedFile object attributes
             output.name = file.name
             output.size = output.getbuffer().nbytes
-            # Note: Content type changes to 'image/jpeg' if compressed to JPEG
             output.content_type = 'image/jpeg' 
             return output
+
+        except Image.DecompressionBombError:
+            print("Image decompression bomb detected. Skipping compression.")
+            return file
         except Exception as e:
-            # In a real app, use proper logging
             print(f"Error compressing image: {e}") 
-            return file # Return original if compression fails
+            # Fallback: Return original file if compression fails
+            return file

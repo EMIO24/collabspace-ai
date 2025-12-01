@@ -102,8 +102,17 @@ class TaskViewSet(viewsets.ModelViewSet):
         return TaskDetailSerializer
 
     def perform_create(self, serializer):
-        """Set created_by on task creation."""
         serializer.save(created_by=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        task = serializer.save()  # perform_create() is called automatically
+
+        # Return full detail response
+        output = TaskDetailSerializer(task, context={'request': request})
+        return Response(output.data, status=status.HTTP_201_CREATED)
+
 
     # ============================================================================
     # 1. Standard Custom Actions (from original TaskViewSet)

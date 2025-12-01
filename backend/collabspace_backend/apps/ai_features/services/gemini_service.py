@@ -1,134 +1,266 @@
-import time
-import json
-from typing import Dict, Any, List
-import google.generativeai as genai
+import os
+import logging
+from typing import Dict, Any, Union, Optional, List
 from django.conf import settings
-from pydantic import BaseModel as PydanticBaseModel
+import google.generativeai as genai
+import google.generativeai.types as types
 
-# Local imports
+# Local imports (assuming correct path)
 from .base_ai_service import BaseAIService
-from ..utils import (
-    calculate_request_hash,
-    get_cached_response,
-    cache_ai_response,
-    get_user_rate_limit,
-    format_ai_response,
-    truncate_for_context,
-    check_content_safety,
-)
+from ..models import AIUsage, AICache 
 
-# Compatibility: APIError replacement for latest genai
-APIError = getattr(genai, "Error", Exception)
-
-# --- Safety Configuration ---
-SAFETY_SETTINGS = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-]
-
+# Set up logger for the module
+logger = logging.getLogger(__name__)
 
 class GeminiService(BaseAIService):
-    """Service wrapper for Google Generative AI (Gemini / Bison models)."""
-
+    """Service for interacting with Google's Gemini AI models."""
+    
+    FEATURE_TYPE: str = 'gemini'
+    
     def __init__(self):
+        """Initialize Gemini service with API configuration."""
         super().__init__()
-        gemini_api_key = getattr(settings, "GEMINI_API_KEY", None)
-        if not gemini_api_key:
-            raise ValueError("GEMINI_API_KEY is not set in Django settings.")
+        
+        # Configure the Gemini API
+        api_key = getattr(settings, 'GEMINI_API_KEY', os.environ.get('GEMINI_API_KEY'))
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not found in settings or environment variables")
+        
+        genai.configure(api_key=api_key)
+        
+        self.flash_model_name: str = 'gemini-2.5-flash'
+        self.pro_model_name: str = 'gemini-2.5-pro'
 
-        # Configure the module-level client
-        genai.configure(api_key=gemini_api_key)
+    def _get_model(self, use_pro: bool = False) -> genai.GenerativeModel:
+        """Get the appropriate Gemini model."""
+        model_name = self.pro_model_name if use_pro else self.flash_model_name
+        return genai.GenerativeModel(model_name)
 
-        self.model_flash_name = "models/text-bison-001"  # Free/Flash model
-        self.model_pro_name = "models/chat-bison-001"    # Pro model
-        self.timeout = 60
+    # FIX: Using List[Any] to avoid module import errors with specific SDK versions
+    def _format_safety_details(self, ratings: List[Any]) -> str:
+        """Helper to format safety ratings into a readable string."""
+        return ", ".join([
+            f"{r.category.name}:{r.probability.name}" 
+            for r in ratings
+        ])
 
-    def _get_model(self, use_pro: bool):
-        return self.model_pro_name if use_pro else self.model_flash_name
-
-    # ------------------------------
-    # Generic Completion
-    # ------------------------------
-    def generate_completion(self, user, prompt: str, feature_type: str, use_pro: bool = False, max_tokens: int = 1000, temperature: float = 0.7, **kwargs) -> Dict[str, Any]:
-        model_name = self._get_model(use_pro)
-        request_hash = calculate_request_hash(prompt, model_name, {"max_output_tokens": max_tokens, "temperature": temperature})
-        cached_response = get_cached_response(request_hash)
-        if cached_response:
-            return format_ai_response({"text": cached_response, "model": model_name, "success": True, "tokens_used": 0})
-
-        if not self.handle_rate_limit(user):
-            raise APIError("Rate limit exceeded. Please try again later.")
-
-        try:
-            response = genai.generate(
-                model=model_name,
-                prompt=prompt,
-                max_output_tokens=max_tokens,
-                temperature=temperature,
-                **kwargs
+    def _check_for_blocks(self, response: types.GenerateContentResponse, prompt: str, user, workspace, feature_type: str, model_name: str) -> Optional[Dict[str, str]]:
+        """
+        Checks the API response for content blocks (safety, resource exhaustion, etc.).
+        
+        Returns a dictionary {'error': message} if blocked, or None otherwise.
+        """
+        
+        # 1. Check for prompt-level blocks (no candidates returned)
+        if not response.candidates:
+            if response.prompt_feedback and response.prompt_feedback.block_reason:
+                block_reason = response.prompt_feedback.block_reason.name
+                safety_ratings = response.prompt_feedback.safety_ratings
+                safety_details = self._format_safety_details(safety_ratings) if safety_ratings else "N/A"
+                error_message = f"Prompt blocked: {block_reason}. Safety Details: {safety_details}"
+            else:
+                error_message = "API response contained no candidates and no clear block reason."
+            
+            logger.warning(f"Gemini generation blocked/failed: {error_message} (Model: {model_name})")
+            
+            # FIX: Added required token arguments for log_usage (Estimate prompt tokens)
+            self.log_usage(
+                user=user, workspace=workspace, feature_type=feature_type, success=False,
+                error_message=error_message, model_used=model_name, provider='gemini',
+                prompt_tokens=self.estimate_tokens(prompt),
+                completion_tokens=0,
             )
-            text = response.candidates[0].content
-            cache_ai_response(request_hash, prompt, text, model_name)
-            return format_ai_response({"text": text, "model": model_name, "success": True, "tokens_used": response.usage.total_tokens})
-        except Exception as e:
-            raise APIError(f"Gemini generate_completion failed: {e}") from e
+            return {'error': error_message}
+        
+        # 2. Check for candidate-specific blocks (finish_reason != STOP)
+        candidate = response.candidates[0]
+        if candidate.finish_reason.name != 'STOP':
+            block_reason = candidate.finish_reason.name
+            
+            if block_reason == 'SAFETY' and candidate.safety_ratings:
+                safety_details = self._format_safety_details(candidate.safety_ratings)
+                error_message = f"Response blocked by Safety Filter ({block_reason}). Details: {safety_details}"
+            else:
+                error_message = f"Response stopped prematurely. Finish Reason: {block_reason}."
+            
+            logger.warning(f"Gemini generation blocked/failed: {error_message} (Model: {model_name})")
 
-    # ------------------------------
-    # Chat
-    # ------------------------------
-    def generate_chat(self, user, messages: List[Dict[str, str]], feature_type: str, use_pro: bool = False, **kwargs) -> Dict[str, Any]:
-        model_name = self._get_model(use_pro)
-        if not self.handle_rate_limit(user):
-            raise APIError("Rate limit exceeded. Please try again later.")
+            # Try to get prompt tokens from metadata for accurate logging on failure, otherwise estimate
+            prompt_tokens_fail = getattr(response.usage_metadata, 'prompt_token_count', 0)
+            if prompt_tokens_fail == 0:
+                 prompt_tokens_fail = self.estimate_tokens(prompt)
 
-        formatted_messages = [{"role": msg["role"], "content": msg["text"]} for msg in messages]
-        try:
-            response = genai.chat.create(
-                model=model_name,
-                messages=formatted_messages,
-                **kwargs
+            # FIX: Added required token arguments for log_usage
+            self.log_usage(
+                user=user, workspace=workspace, feature_type=feature_type, success=False,
+                error_message=error_message, model_used=model_name, provider='gemini',
+                prompt_tokens=prompt_tokens_fail,
+                completion_tokens=0,
             )
-            text = response.last
+            return {'error': error_message}
+        
+        return None # No block found
+    
+    def generate_completion(self, user, workspace, prompt: str, feature_type: str, max_tokens: int = 500, use_pro: bool = False) -> Dict[str, Union[str, int]]:
+        """
+        Generate a completion using Gemini.
+        
+        Returns:
+            Dict[str, Any]: A dictionary containing 'text' or 'error' key.
+        """
+        model_name = self.pro_model_name if use_pro else self.flash_model_name
+        
+        try:
+            self.handle_rate_limit(user, feature_type=feature_type, cost=1)
+            model = self._get_model(use_pro=use_pro)
+            
+            response = model.generate_content(
+                prompt,
+                generation_config=types.GenerationConfig(
+                    max_output_tokens=max_tokens,
+                    temperature=0.7,
+                )
+            )
+            
+            # Check for content blocks using helper
+            block_check = self._check_for_blocks(response, prompt, user, workspace, feature_type, model_name)
+            if block_check:
+                return block_check
+            
+            # --- Successful Response Path ---
+            
+            response_text = response.text
+            
+            # Get token usage
+            try:
+                prompt_tokens = response.usage_metadata.prompt_token_count
+                completion_tokens = response.usage_metadata.candidates_token_count
+                total_tokens = response.usage_metadata.total_token_count
+            except AttributeError:
+                # Fallback estimation if metadata is unavailable
+                prompt_tokens = self.estimate_tokens(prompt)
+                completion_tokens = self.estimate_tokens(response_text)
+                total_tokens = prompt_tokens + completion_tokens
+            
+            # Log usage
+            self.log_usage(
+                user=user, workspace=workspace, feature_type=feature_type,
+                prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                model_used=model_name, provider='gemini', success=True,
+                request_data={'prompt': prompt[:500]}, response_data={'text': response_text[:500]},
+            )
+            
             return {
-                "text": text,
-                "model": model_name,
-                "total_tokens": response.total_tokens,
-                "success": True
+                'text': response_text,
+                'prompt_tokens': prompt_tokens,
+                'completion_tokens': completion_tokens,
+                'total_tokens': total_tokens,
+                'model': model_name
             }
+            
         except Exception as e:
-            raise APIError(f"Gemini generate_chat failed: {e}") from e
+            # Handle API errors, rate limits, network issues, etc.
+            error_msg = f"Gemini generate_completion failed: {e}"
+            logger.error(error_msg, exc_info=True)
+            
+            # Log failure
+            try:
+                # FIX: Provided required token arguments with zero values for generic exceptions
+                self.log_usage(
+                    user=user, workspace=workspace, feature_type=feature_type, success=False,
+                    error_message=str(e), model_used=model_name, provider='gemini',
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                )
+            except:
+                pass 
+                
+            return {'error': str(e)}
 
-    # ------------------------------
-    # Structured JSON
-    # ------------------------------
-    def generate_structured_json(self, user, prompt: str, feature_type: str, schema: PydanticBaseModel, use_pro: bool = False, **kwargs) -> Any:
-        model_name = self._get_model(use_pro)
-        if not self.handle_rate_limit(user):
-            raise APIError("Rate limit exceeded. Please try again later.")
+    def generate_chat(self, user, workspace, messages: List[Dict[str, str]], feature_type: str, use_pro: bool = False) -> Dict[str, Union[str, int]]:
+        """
+        Generate a chat response using Gemini.
+        """
+        model_name = self.pro_model_name if use_pro else self.flash_model_name
 
         try:
-            response = genai.generate(
-                model=model_name,
-                prompt=prompt,
-                response_mime_type="application/json",
-                **kwargs
+            self.handle_rate_limit(user, feature_type=feature_type, cost=1)
+            model = self._get_model(use_pro=use_pro)
+            chat = model.start_chat(history=[])
+            
+            # Convert messages to Gemini format and build history
+            for msg in messages[:-1]:
+                role = 'model' if msg['role'] == 'assistant' else 'user'
+                chat.history.append(types.Content(
+                    role=role,
+                    parts=[types.Part.from_text(msg['text'])]
+                ))
+            
+            # Send the last message
+            last_message = messages[-1]['text']
+            response = chat.send_message(last_message)
+            
+            # Check for content blocks using helper
+            block_check = self._check_for_blocks(response, last_message, user, workspace, feature_type, model_name)
+            if block_check:
+                return block_check
+
+            # Extract response
+            response_text = response.text
+            
+            # Get token usage
+            try:
+                prompt_tokens = response.usage_metadata.prompt_token_count
+                completion_tokens = response.usage_metadata.candidates_token_count
+                total_tokens = response.usage_metadata.total_token_count
+            except AttributeError:
+                # Fallback estimation
+                all_text = ' '.join([m['text'] for m in messages]) + response_text
+                prompt_tokens = self.estimate_tokens(all_text)
+                completion_tokens = self.estimate_tokens(response_text)
+                total_tokens = prompt_tokens + completion_tokens
+            
+            # Log usage
+            self.log_usage(
+                user=user, workspace=workspace, feature_type=feature_type,
+                prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                model_used=model_name, provider='gemini', success=True,
             )
-            return json.loads(response.candidates[0].content)
+            
+            return {
+                'text': response_text,
+                'total_tokens': total_tokens,
+                'model': model_name
+            }
+            
         except Exception as e:
-            raise APIError(f"Gemini generate_structured_json failed: {e}") from e
-
-    # ------------------------------
-    # Moderate / Safety
-    # ------------------------------
-    def moderate_content(self, text: str) -> bool:
-        return check_content_safety(text)
-
-    # ------------------------------
-    # With context
-    # ------------------------------
-    def generate_with_context(self, user, prompt: str, context_data: str, feature_type: str, use_pro: bool = False, **kwargs):
-        context_data = truncate_for_context(context_data, max_tokens=250000)
-        full_prompt = f"--- CONTEXT ---\n{context_data}\n--- INSTRUCTION ---\n{prompt}"
-        return self.generate_completion(user, full_prompt, feature_type, use_pro, **kwargs)
+            error_msg = f"Gemini chat failed: {e}"
+            logger.error(error_msg, exc_info=True)
+            
+            try:
+                # FIX: Provided required token arguments with zero values for generic exceptions
+                self.log_usage(
+                    user=user, workspace=workspace, feature_type=feature_type,
+                    prompt_tokens=0, completion_tokens=0,
+                    model_used=model_name, provider='gemini',
+                    success=False, error_message=str(e),
+                )
+            except:
+                pass
+            
+            return {'error': str(e)}
+    
+    def check_cache(self, prompt_hash: str) -> Optional[Dict[str, Any]]:
+        """Check if a cached response exists for this prompt."""
+        try:
+            cache_entry = AICache.objects.get(prompt_hash=prompt_hash)
+            return cache_entry.response_data
+        except AICache.DoesNotExist:
+            return None
+    
+    def save_to_cache(self, prompt_hash: str, response_data: Dict[str, Any]):
+        """Save a response to the cache."""
+        AICache.objects.create(
+            prompt_hash=prompt_hash,
+            response_data=response_data
+        )

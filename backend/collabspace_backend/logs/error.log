@@ -20,3 +20,103 @@ ERROR 2025-11-24 07:38:32,602 log 14638 139665545881280 Internal Server Error: /
 ERROR 2025-11-24 07:50:18,579 log 14811 140567157663424 Internal Server Error: /api/workspaces/invitations/accept/
 ERROR 2025-11-24 12:29:13,549 log 15144 140285963052736 Internal Server Error: /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/1/
 ERROR 2025-11-24 12:30:27,240 log 15144 140285963052736 Internal Server Error: /api/workspaces/450c7d0e-acec-4dc9-99bf-03507a82602b/invitations/1/
+ERROR 2025-11-25 01:23:31,180 log 15485 140470436927168 Internal Server Error: /api/projects/
+ERROR 2025-11-25 06:22:12,825 log 15711 140696587503296 Internal Server Error: /api/projects/66c25fbe-4a2f-4503-be64-c78ddd03df48/members/d6bf80ac-d5ff-4320-b3bc-a7b103293e08/
+ERROR 2025-11-25 18:32:07,464 log 16504 139934848427712 Internal Server Error: /api/tasks/tasks/stats/
+ERROR 2025-11-26 12:29:39,650 log 16686 139944194471616 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-26 14:24:58,431 log 17078 139856405509824 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:01:14,704 log 17078 139856405509824 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:16:56,238 log 17324 140580500711104 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:21:11,616 log 17346 140519921415872 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:22:54,435 log 17365 140527829694144 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:35:30,683 log 17495 140608298546880 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:49:02,139 log 17636 140690233145024 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:50:35,622 log 17649 139640001439424 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:54:12,893 log 17684 140280995948224 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:55:59,259 log 17699 140568261732032 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:56:42,813 log 17710 140042632607424 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 05:57:59,433 log 17720 140086319429312 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:01:04,148 log 17751 140213770778304 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:01:56,706 log 17765 139654598665920 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:04:19,679 log 17782 140353183065792 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:06:13,741 log 17818 140294997583552 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:07:48,776 log 17854 140248158742208 Service Unavailable: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:09:14,010 log 17895 140459851560640 Service Unavailable: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:38:15,725 log 17895 140458785240768 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:51:18,272 log 18143 140255812298432 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:55:43,824 log 18201 139908735739584 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:56:46,098 log 18201 139908735739584 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:58:03,865 log 18201 139908735739584 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 06:59:44,008 log 18234 140399479793344 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 07:00:36,347 log 18234 140399479793344 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 07:05:21,869 log 18263 140159188117184 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 07:05:51,865 log 18263 140159188117184 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 07:07:36,665 log 18291 139686191212224 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 07:16:31,606 log 18350 140714671339200 Internal Server Error: /api/ai/tasks/summarize/
+ERROR 2025-11-27 07:39:22,397 log 18506 140690833008320 Internal Server Error: /api/ai/tasks/breakdown/
+ERROR 2025-11-27 07:58:30,420 log 18615 140604706039488 Internal Server Error: /api/ai/tasks/suggest-assignee/
+ERROR 2025-11-27 08:02:12,798 log 18615 140604696598208 Internal Server Error: /api/ai/tasks/suggest-assignee/
+ERROR 2025-11-27 10:51:17,840 log 18615 140604453406400 Internal Server Error: /api/ai/tasks/suggest-assignee/
+ERROR 2025-11-27 10:52:06,250 log 18721 140016682444480 Internal Server Error: /api/ai/tasks/suggest-assignee/
+ERROR 2025-11-27 11:00:14,705 log 18768 139723235305152 Internal Server Error: /api/ai/tasks/suggest-assignee/
+ERROR 2025-11-27 11:25:31,790 log 18891 140182545147584 Service Unavailable: /api/ai/meetings/summarize/
+ERROR 2025-11-27 11:38:37,608 log 18891 140181617239744 Service Unavailable: /api/ai/meetings/summarize/
+ERROR 2025-11-27 11:47:06,055 log 19067 140471181420224 Internal Server Error: /api/ai/meetings/summarize/
+ERROR 2025-11-27 11:59:39,796 log 19099 139811721574080 Service Unavailable: /api/ai/analytics/project-forecast/ebd1bb63-a00f-4386-bcc7-294b828e621f/
+ERROR 2025-11-27 14:28:47,300 log 20325 139900229772992 Internal Server Error: /api/ai/assistant/chat/
+ERROR 2025-11-27 22:05:06,592 log 20881 140407806535360 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+Traceback (most recent call last):
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/utils/deprecation.py", line 122, in __call__
+    response = self.process_response(request, response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/middleware/clickjacking.py", line 27, in process_response
+    if response.get("X-Frame-Options") is not None:
+       ^^^^^^^^^^^^
+AttributeError: 'MockResponse' object has no attribute 'get'
+ERROR 2025-11-27 22:05:10,627 log 20881 140407806535360 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+Traceback (most recent call last):
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/utils/deprecation.py", line 122, in __call__
+    response = self.process_response(request, response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/middleware/clickjacking.py", line 27, in process_response
+    if response.get("X-Frame-Options") is not None:
+       ^^^^^^^^^^^^
+AttributeError: 'MockResponse' object has no attribute 'get'
+ERROR 2025-11-27 22:06:46,839 log 20916 140224275326656 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+Traceback (most recent call last):
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/utils/deprecation.py", line 122, in __call__
+    response = self.process_response(request, response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/emio24/.local/lib/python3.12/site-packages/django/middleware/clickjacking.py", line 27, in process_response
+    if response.get("X-Frame-Options") is not None:
+       ^^^^^^^^^^^^
+AttributeError: 'MockResponse' object has no attribute 'get'
+ERROR 2025-11-27 22:12:05,089 log 20957 140023946979008 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+ERROR 2025-11-27 22:28:01,103 log 21110 140126299530944 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+ERROR 2025-11-27 22:30:27,148 log 21126 139621755168448 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+ERROR 2025-11-27 22:31:51,385 log 21142 140510686521024 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+ERROR 2025-11-27 22:48:24,706 log 21313 140264324638400 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+ERROR 2025-11-27 22:51:30,218 log 21333 140340102080192 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+ERROR 2025-11-27 22:52:56,659 log 21352 139860655384256 Internal Server Error: /api/analytics/workspace/093d6ec2-2822-49e8-bc42-0342f268bf20/metrics/
+ERROR 2025-11-27 22:57:14,705 log 21383 140716732753600 Internal Server Error: /api/analytics/project/ebd1bb63-a00f-4386-bcc7-294b828e621f/metrics/
+ERROR 2025-11-27 23:35:37,526 log 21595 139819064665792 Internal Server Error: /api/messaging/channels/1/
+ERROR 2025-11-29 00:12:43,686 log 22296 140461771499200 Internal Server Error: /api/files/
+ERROR 2025-11-29 00:43:26,240 log 22463 140284298000064 Internal Server Error: /api/files/
+ERROR 2025-11-29 00:46:13,835 log 22492 139876846200512 Internal Server Error: /api/files/
+ERROR 2025-11-29 13:49:15,961 log 22513 139689809913536 Internal Server Error: /api/integrations/integrations/
+ERROR 2025-11-29 16:27:15,452 log 23213 140211421968064 Internal Server Error: /api/auth/refresh/
+ERROR 2025-11-30 04:54:20,077 log 23435 140653356570304 Internal Server Error: /api/workspaces/invitations/accept/
+ERROR 2025-11-30 04:58:05,928 log 23504 139658885002944 Internal Server Error: /api/workspaces/invitations/accept/
+ERROR 2025-11-30 04:58:32,637 log 23527 140109895362240 Internal Server Error: /api/workspaces/invitations/accept/
+ERROR 2025-11-30 05:06:29,391 log 23584 140626574894784 Internal Server Error: /api/workspaces/invitations/accept/
+ERROR 2025-11-30 19:46:47,175 log 23910 140400593462976 Internal Server Error: /api/ai/tasks/breakdown/
+ERROR 2025-11-30 20:32:58,723 log 24039 140088772110016 Internal Server Error: /api/messaging/channels/

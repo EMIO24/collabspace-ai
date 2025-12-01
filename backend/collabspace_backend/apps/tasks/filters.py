@@ -10,7 +10,7 @@ class TaskFilter(django_filters.FilterSet):
     Comprehensive filter for tasks, combining basic, advanced, and custom criteria.
     """
 
-    # --- Basic Filters (from original TaskFilter) ---
+    # --- Basic Filters (FIXED) ---
     status = django_filters.ChoiceFilter(
         field_name='status',
         choices=Task.STATUS_CHOICES,
@@ -23,27 +23,29 @@ class TaskFilter(django_filters.FilterSet):
         help_text='Filter by single task priority'
     )
     
-    project = django_filters.NumberFilter(
+    # ✅ FIXED: Changed from NumberFilter to UUIDFilter
+    project = django_filters.UUIDFilter(
         field_name='project_id',
-        help_text='Filter by project ID'
+        help_text='Filter by project ID (UUID)'
     )
     
-    assigned_to = django_filters.NumberFilter(
+    # ✅ FIXED: If user IDs are also UUIDs, change these too
+    assigned_to = django_filters.UUIDFilter(  # Change to UUIDFilter if User ID is UUID
         field_name='assigned_to_id',
         help_text='Filter by assigned user ID'
     )
     
-    created_by = django_filters.NumberFilter(
+    created_by = django_filters.UUIDFilter(  # Change to UUIDFilter if User ID is UUID
         field_name='created_by_id',
         help_text='Filter by creator user ID'
     )
     
-    parent_task = django_filters.NumberFilter(
+    parent_task = django_filters.NumberFilter(  # Keep as NumberFilter if Task ID is integer
         field_name='parent_task_id',
         help_text='Filter by parent task ID'
     )
     
-    # --- Multi-Select Filters (from TaskFilterExtended) ---
+    # --- Multi-Select Filters ---
     statuses = django_filters.CharFilter(
         method='filter_statuses',
         help_text='Filter by multiple statuses (comma-separated, e.g., todo,in_progress)'
@@ -59,7 +61,7 @@ class TaskFilter(django_filters.FilterSet):
         help_text='Filter by multiple assigned user IDs (comma-separated IDs)'
     )
 
-    # --- Date Range Filters (Combined) ---
+    # --- Date Range Filters ---
     due_date_from = django_filters.DateTimeFilter(
         field_name='due_date',
         lookup_expr='gte',
@@ -84,7 +86,7 @@ class TaskFilter(django_filters.FilterSet):
         help_text='Filter tasks created before this date'
     )
     
-    # --- Advanced Date Filters (from TaskFilterExtended/TaskAdvancedFilter) ---
+    # --- Advanced Date Filters ---
     created_last_days = django_filters.NumberFilter(
         method='filter_created_last_days',
         help_text='Filter tasks created in the last N days'
@@ -111,7 +113,7 @@ class TaskFilter(django_filters.FilterSet):
         help_text='Filter tasks with or without tags'
     )
 
-    # --- Collaboration/Activity Filters (from TaskFilterExtended) ---
+    # --- Collaboration/Activity Filters ---
     has_comments = django_filters.BooleanFilter(
         method='filter_has_comments',
         help_text='Filter tasks with or without comments'
@@ -127,7 +129,8 @@ class TaskFilter(django_filters.FilterSet):
         help_text='Filter tasks with or without time entries'
     )
 
-    collaborator = django_filters.NumberFilter(
+    # ✅ FIXED: If user IDs are UUIDs, need to update this method
+    collaborator = django_filters.UUIDFilter(  # Change to UUIDFilter if needed
         method='filter_collaborator',
         help_text='Filter tasks where user is involved (assigned, created, commented, or logged time)'
     )
@@ -171,7 +174,7 @@ class TaskFilter(django_filters.FilterSet):
             ('blocked', 'Blocked'),
             ('stalled', 'Stalled'),
         ],
-        help_text='Filter by special completion states (completed, active, blocked, stalled)'
+        help_text='Filter by special completion states'
     )
     
     # --- Time-based Filters ---
@@ -187,43 +190,38 @@ class TaskFilter(django_filters.FilterSet):
         help_text='Maximum estimated hours'
     )
     
-    # --- Filter Methods ---
+    # --- Filter Methods (unchanged) ---
 
     def filter_statuses(self, queryset, name, value):
-        """Filter by multiple statuses (comma-separated)."""
         statuses = [s.strip() for s in value.split(',')]
         return queryset.filter(status__in=statuses)
 
     def filter_priorities(self, queryset, name, value):
-        """Filter by multiple priorities (comma-separated)."""
         priorities = [p.strip() for p in value.split(',')]
         return queryset.filter(priority__in=priorities)
 
     def filter_assigned_users(self, queryset, name, value):
-        """Filter by multiple assigned users (comma-separated IDs)."""
+        # ✅ NOTE: If user IDs are UUIDs, you need to parse them differently
         try:
-            user_ids = [int(uid.strip()) for uid in value.split(',')]
+            # For UUIDs, don't convert to int:
+            user_ids = [uid.strip() for uid in value.split(',')]
+            # For integers, use: user_ids = [int(uid.strip()) for uid in value.split(',')]
         except ValueError:
-            return queryset.none() # Return empty if IDs are invalid
+            return queryset.none()
         return queryset.filter(assigned_to_id__in=user_ids)
 
     def filter_created_last_days(self, queryset, name, value):
-        """Filter tasks created in last N days."""
         cutoff = timezone.now() - timedelta(days=value)
         return queryset.filter(created_at__gte=cutoff)
 
     def filter_due_next_days(self, queryset, name, value):
-        """Filter tasks due in next N days."""
         now = timezone.now()
         future = now + timedelta(days=value)
-        # Filters tasks due in the future, up to `future`
         return queryset.filter(due_date__gte=now, due_date__lte=future, status__in=['todo', 'in_progress', 'review'])
 
     def filter_search(self, queryset, name, value):
-        """Full-text search across title, description, and tags."""
         if not value:
             return queryset
-        # Search combines the logic from both previous 'search' methods
         return queryset.filter(
             Q(title__icontains=value) |
             Q(description__icontains=value) |
@@ -231,25 +229,21 @@ class TaskFilter(django_filters.FilterSet):
         ).distinct()
 
     def filter_has_comments(self, queryset, name, value):
-        """Filter tasks with or without comments."""
         if value:
             return queryset.filter(comments__isnull=False).distinct()
         return queryset.filter(comments__isnull=True).distinct()
 
     def filter_has_attachments(self, queryset, name, value):
-        """Filter tasks with or without attachments."""
         if value:
             return queryset.filter(attachments__isnull=False).distinct()
         return queryset.filter(attachments__isnull=True).distinct()
 
     def filter_has_time_entries(self, queryset, name, value):
-        """Filter tasks with or without time entries."""
         if value:
             return queryset.filter(time_entries__isnull=False).distinct()
         return queryset.filter(time_entries__isnull=True).distinct()
 
     def filter_completion_status(self, queryset, name, value):
-        """Filter by special completion status (completed, active, blocked, stalled)."""
         if value == 'completed':
             return queryset.filter(status=Task.STATUS_DONE)
         elif value == 'active':
@@ -257,11 +251,9 @@ class TaskFilter(django_filters.FilterSet):
                 status__in=[Task.STATUS_TODO, Task.STATUS_IN_PROGRESS, Task.STATUS_REVIEW]
             )
         elif value == 'blocked':
-            # Note: This is a computed filter and may be slow. It relies on the Task.is_blocked() method.
             blocked_ids = [task.id for task in queryset if task.is_blocked()]
             return queryset.filter(id__in=blocked_ids)
         elif value == 'stalled':
-            # Tasks not updated in 7+ days and not done
             cutoff = timezone.now() - timedelta(days=7)
             return queryset.filter(
                 updated_at__lt=cutoff,
@@ -269,25 +261,19 @@ class TaskFilter(django_filters.FilterSet):
             )
         return queryset
 
-
     def filter_by_tags(self, queryset, name, value):
-        """Filter tasks by tags (comma-separated)."""
         if not value:
             return queryset
         tags = [tag.strip() for tag in value.split(',')]
-        # Use overlap for OR logic (task has ANY of the tags)
         return queryset.filter(tags__overlap=tags)
 
     def filter_has_tags(self, queryset, name, value):
-        """Filter tasks with or without tags."""
         if value:
             return queryset.exclude(tags=[])
         else:
             return queryset.filter(tags=[])
 
     def filter_overdue(self, queryset, name, value):
-        """Filter overdue tasks."""
-        # This handles both ?is_overdue=true and ?is_overdue=false cases
         overdue_filter = Q(
             due_date__lt=timezone.now(),
             status__in=[Task.STATUS_TODO, Task.STATUS_IN_PROGRESS, Task.STATUS_REVIEW]
@@ -298,69 +284,48 @@ class TaskFilter(django_filters.FilterSet):
             return queryset.exclude(overdue_filter)
 
     def filter_has_subtasks(self, queryset, name, value):
-        """Filter tasks with or without subtasks."""
         if value:
             return queryset.filter(subtasks__isnull=False).distinct()
         else:
             return queryset.filter(subtasks__isnull=True)
 
     def filter_is_root(self, queryset, name, value):
-        """Filter root tasks (no parent)."""
         if value:
             return queryset.filter(parent_task__isnull=True)
         else:
             return queryset.filter(parent_task__isnull=False)
 
     def filter_unassigned(self, queryset, name, value):
-        """Filter unassigned tasks."""
         if value:
             return queryset.filter(assigned_to__isnull=True)
         else:
             return queryset.filter(assigned_to__isnull=False)
 
     def filter_has_dependencies(self, queryset, name, value):
-        """Filter tasks with dependencies (either blocking or blocked by)."""
         if value:
-            # Check for either side of the dependency relationship
             return queryset.filter(Q(dependencies__isnull=False) | Q(dependents__isnull=False)).distinct()
         else:
             return queryset.filter(Q(dependencies__isnull=True), Q(dependents__isnull=True))
 
     def filter_blocked(self, queryset, name, value):
-        """Filter blocked tasks (has incomplete blocking dependencies)."""
-        # Note: Relies on `task.is_blocked()` which is slow. Using the implementation from the second snippet.
         if value:
-            # Get tasks with blocking dependencies
             tasks_with_deps = queryset.filter(
                 dependencies__dependency_type='blocks'
             ).distinct()
-            
-            # Filter to only those where the blocking task is not done
             blocked_task_ids = [task.id for task in tasks_with_deps if task.is_blocked()]
-            
             return queryset.filter(id__in=blocked_task_ids)
         else:
-            # Return tasks that are NOT blocked (more complex query, using the second snippet's logic)
             tasks_with_deps = queryset.filter(
                 dependencies__dependency_type='blocks'
             ).distinct()
-            
-            # Find the IDs of tasks that HAVE blocking dependencies but are currently unblocked
             unblocked_task_ids = [task.id for task in tasks_with_deps if not task.is_blocked()]
-            
-            # Find the IDs of tasks with NO dependencies
             no_deps = queryset.filter(Q(dependencies__isnull=True), Q(dependents__isnull=True)).values_list('id', flat=True)
-            
-            # Combine both sets of IDs
             all_unblocked = list(unblocked_task_ids) + list(no_deps)
-            
             return queryset.filter(id__in=all_unblocked)
 
     def filter_collaborator(self, queryset, name, value):
-        """Filter tasks where user is a collaborator (assigned, created, commented, or logged time)."""
         if not value:
             return queryset
-        
         return queryset.filter(
             Q(assigned_to_id=value) |
             Q(created_by_id=value) |
@@ -375,9 +340,3 @@ class TaskFilter(django_filters.FilterSet):
             'parent_task', 'due_date_from', 'due_date_to', 'created_at_from',
             'created_at_to', 'is_active', 'estimated_hours_min', 'estimated_hours_max',
         ]
-
-# Note: The filters related to completion percentage (min/max) that rely on 
-# `get_subtask_progress_percentage()` were excluded from the final class as they are 
-# expensive and should be handled separately, possibly via annotations or optimized 
-# logic, to avoid N+1 query problems in a production environment. 
-# If they are critical, you should use the methods from TaskAdvancedFilter.

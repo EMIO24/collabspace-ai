@@ -1,55 +1,73 @@
-# apps/analytics/urls.py
+"""
+CollabSpace AI - Analytics Module URLs
+Routing configuration for all analytics-related API endpoints.
+"""
 
 from django.urls import path
 from .views import (
     WorkspaceAnalyticsView,
+    WorkspaceMemberActivityView,
     ProjectAnalyticsView,
-    TeamProductivityView,
     BurndownChartView,
     VelocityChartView,
-    TimeTrackingReportView
+    TeamProductivityView,
+    TopPerformersView,
+    TimeTrackingReportView,
+    TeamVelocityView
 )
 
-app_name = "analytics"
+app_name = 'analytics'
 
 urlpatterns = [
-    # Workspace analytics
+    # Workspace Analytics
     path(
-        "workspace/<int:workspace_id>/metrics/",
-        WorkspaceAnalyticsView().get,
-        name="workspace-metrics",
+        'workspace/<uuid:workspace_id>/metrics/',
+        WorkspaceAnalyticsView.as_view(),
+        name='workspace-metrics'
+    ),
+    path(
+        'workspace/<uuid:workspace_id>/member-activity/',
+        WorkspaceMemberActivityView.as_view(),
+        name='workspace-member-activity'
+    ),
+    path(
+        'workspace/<uuid:workspace_id>/team-productivity/',
+        TeamProductivityView.as_view(),
+        name='workspace-team-productivity'
+    ),
+    path(
+        'workspace/<uuid:workspace_id>/top-performers/',
+        TopPerformersView.as_view(),
+        name='workspace-top-performers'
+    ),
+    
+    # Project Analytics
+    path(
+        'project/<uuid:project_id>/metrics/',
+        ProjectAnalyticsView.as_view(),
+        name='project-metrics'
+    ),
+    path(
+        'project/<uuid:project_id>/burndown/',
+        BurndownChartView.as_view(),
+        name='project-burndown'
+    ),
+    path(
+        'project/<uuid:project_id>/velocity/',
+        VelocityChartView.as_view(),
+        name='project-velocity'
+    ),
+    
+    # Time Tracking Reports
+    path(
+        'reports/time-tracking/',
+        TimeTrackingReportView.as_view(),
+        name='time-tracking-report'
     ),
 
-    # Project analytics
     path(
-        "project/<int:project_id>/metrics/",
-        ProjectAnalyticsView().get,
-        name="project-metrics",
-    ),
-
-    # Team productivity
-    path(
-        "workspace/<int:workspace_id>/team-productivity/",
-        TeamProductivityView().get,
-        name="team-productivity",
-    ),
-
-    # Charts
-    path(
-        "project/<int:project_id>/burndown/",
-        BurndownChartView().get,
-        name="burndown-chart",
-    ),
-    path(
-        "team/<str:team_id>/velocity/",
-        VelocityChartView().get,
-        name="velocity-chart",
-    ),
-
-    # Reports
-    path(
-        "reports/time_tracking/",
-        TimeTrackingReportView().get,
-        name="time-tracking-report",
+    'team/<slug:team_id>/velocity/',
+    TeamVelocityView.as_view(), # You would need to create this view
+    name='team-velocity'
     ),
 ]

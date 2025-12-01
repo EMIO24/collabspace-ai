@@ -129,28 +129,40 @@ class IsWorkspaceAdmin(BasePermission):
 
 class IsProjectMember(BasePermission):
     """
-    Allow access only to project members.
-    Expects view.kwargs['project_id'] or request.data['project'].
+    Permission to check if user is a member of the project or workspace.
     """
-
-    message = "User is not a member of this project."
-
+    
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        project_id = getattr(view, "kwargs", {}).get("project_id") or request.data.get("project")
-        if not project_id:
-            logger.debug("IsProjectMember: no project id provided")
-            return False
-        if ProjectMember is None:
-            logger.warning("ProjectMember model not available")
-            return False
-        try:
-            return ProjectMember.objects.filter(user=request.user, project_id=project_id).exists()
-        except Exception:
-            logger.exception("Error checking project membership")
-            return False
-
+        """Check if user is authenticated."""
+        return request.user and request.user.is_authenticated
+    
+    def has_object_permission(self, request, view, obj):
+        """
+        Check if user is a member of the project or the workspace.
+        For Task objects, obj is the task, so we check task.project.
+        For Project objects, obj is the project itself.
+        """
+        # Get the project
+        if hasattr(obj, 'project'):
+            # obj is a Task or related object
+            project = obj.project
+        else:
+            # obj is a Project
+            project = obj
+        
+        # Check if user is a project member
+        if project.is_member(request.user):
+            return True
+        
+        # Check if user is a workspace member (important!)
+        if project.workspace.is_member(request.user):
+            return True
+        
+        # Check if user is the project owner
+        if project.owner == request.user:
+            return True
+        
+        return False
 
 class IsProjectOwner(BasePermission):
     """

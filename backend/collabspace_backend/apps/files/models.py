@@ -1,30 +1,29 @@
 import uuid
 from django.db import models
 from django.conf import settings
-from apps.core.models import BaseModel # Assuming this is available
+from apps.core.models import BaseModel
+from django.contrib.auth.hashers import make_password, check_password as django_check_password
 
 class File(BaseModel):
     """File metadata"""
     workspace = models.ForeignKey('workspaces.Workspace', on_delete=models.CASCADE, related_name='files')
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='uploaded_files')
     file_name = models.CharField(max_length=255)
-    file_size = models.BigIntegerField()  # bytes
-    file_type = models.CharField(max_length=100)  # MIME type
+    file_size = models.BigIntegerField()
+    file_type = models.CharField(max_length=100)
     cloudinary_public_id = models.CharField(max_length=255, unique=True)
     cloudinary_url = models.URLField()
     thumbnail_url = models.URLField(null=True, blank=True)
 
-    # Generic relation to attach to any model
-    related_to_type = models.CharField(max_length=50, null=True, blank=True)  # task, project, message
+    related_to_type = models.CharField(max_length=50, null=True, blank=True)
     related_to_id = models.UUIDField(null=True, blank=True)
 
     is_public = models.BooleanField(default=False)
     download_count = models.IntegerField(default=0)
 
-    # Metadata
-    width = models.IntegerField(null=True, blank=True)  # for images
-    height = models.IntegerField(null=True, blank=True)  # for images
-    duration = models.FloatField(null=True, blank=True)  # for videos/audio
+    width = models.IntegerField(null=True, blank=True)
+    height = models.IntegerField(null=True, blank=True)
+    duration = models.FloatField(null=True, blank=True)
 
     class Meta:
         db_table = 'files'
@@ -45,7 +44,6 @@ class File(BaseModel):
         """Delete file from Cloudinary"""
         import cloudinary.uploader
         
-        # Helper to determine resource_type based on MIME type
         def _get_resource_type(file_type):
             if file_type.startswith('image/'):
                 return 'image'
@@ -58,7 +56,6 @@ class File(BaseModel):
         try:
             cloudinary.uploader.destroy(self.cloudinary_public_id, resource_type=resource_type)
         except Exception as e:
-            # In a real app, use proper logging
             print(f"Error deleting from Cloudinary: {e}")
 
 class FileVersion(models.Model):
@@ -86,7 +83,7 @@ class SharedLink(models.Model):
     file = models.ForeignKey(File, on_delete=models.CASCADE, related_name='shared_links')
     token = models.CharField(max_length=64, unique=True, db_index=True)
     expires_at = models.DateTimeField(null=True, blank=True)
-    password = models.CharField(max_length=128, null=True, blank=True)  # Hashed password
+    password = models.CharField(max_length=128, null=True, blank=True) # Now stores standard Django hash
     max_downloads = models.IntegerField(null=True, blank=True)
     download_count = models.IntegerField(default=0)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -100,10 +97,8 @@ class SharedLink(models.Model):
 
     def is_valid(self):
         from django.utils import timezone
-        # Check expiration
         if self.expires_at and self.expires_at < timezone.now():
             return False
-        # Check download limit
         if self.max_downloads and self.download_count >= self.max_downloads:
             return False
         return True
@@ -111,3 +106,11 @@ class SharedLink(models.Model):
     def increment_download(self):
         self.download_count += 1
         self.save(update_fields=['download_count'])
+    
+    def set_password(self, raw_password):
+        """Hashes the password using Django's standard hashers."""
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        """Checks the password using Django's standard hashers."""
+        return django_check_password(raw_password, self.password)
