@@ -1,0 +1,28 @@
+.heatmapContainer {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  /* GitHub style: Columns are weeks, rows are days usually, 
+     but for simplicity in responsive layouts, we often wrap blocks */
+}
+
+.day {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.day:hover {
+  transform: scale(1.4);
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Intensity Levels */
+.level0 { background-color: rgba(235, 237, 240, 0.5); }
+.level1 { background-color: #c6e48b; }
+.level2 { background-color: #7bc96f; }
+.level3 { background-color: #239a3b; }
+.level4 { background-color: #196127; }
