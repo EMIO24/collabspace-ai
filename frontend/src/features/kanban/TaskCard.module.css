@@ -1,0 +1,54 @@
+.card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: var(--shadow-soft);
+  cursor: grab;
+  transition: transform 0.2s, box-shadow 0.2s;
+  touch-action: none; /* Critical for dnd-kit on mobile */
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.isDragging {
+  opacity: 0.5;
+  box-shadow: none;
+  border: 1px dashed var(--primary);
+  background: transparent;
+}
+
+.title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.priority {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.priority_high { background: #fee2e2; color: #ef4444; }
+.priority_medium { background: #fef3c7; color: #f59e0b; }
+.priority_low { background: #dbeafe; color: #3b82f6; }

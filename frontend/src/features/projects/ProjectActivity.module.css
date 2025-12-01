@@ -1,0 +1,66 @@
+.container {
+  padding: 1.5rem 0;
+}
+
+.header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 1.5rem;
+  padding-left: 0.5rem;
+}
+
+.timeline {
+  position: relative;
+  border-left: 2px solid var(--glass-border);
+  margin-left: 1rem;
+  padding-left: 2rem;
+}
+
+.item {
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.item:last-child {
+  margin-bottom: 0;
+}
+
+.dot {
+  position: absolute;
+  left: -2.45rem; /* Aligns dot on the border line */
+  top: 0.25rem;
+  width: 14px;
+  height: 14px;
+  background-color: var(--primary);
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+}
+
+.card:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.timestamp {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+  font-family: monospace;
+}
+
+.message {
+  font-size: 0.9rem;
+  color: var(--text-main);
+  margin: 0;
+  line-height: 1.4;
+}

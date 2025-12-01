@@ -1,0 +1,84 @@
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: linear-gradient(to right, rgba(99, 102, 241, 0.05), rgba(236, 72, 153, 0.05));
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.label {
+  width: 100%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.magicBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: white;
+  border: 2px solid transparent; /* Transparent for gradient visibility */
+  border-radius: 8px;
+  cursor: pointer;
+  background-clip: padding-box; /* Ensures white bg doesn't cover border */
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* The Magic Gradient Border Logic */
+.magicBtn::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: -1;
+  margin: -2px; /* Extend outside the padding-box background */
+  border-radius: inherit;
+  background: linear-gradient(135deg, #6366f1, #ec4899, #8b5cf6);
+}
+
+.magicBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.magicBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+.icon {
+  color: #8b5cf6; /* Purple for magic feel */
+}
+
+/* Response Area */
+.responseBox {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  border-left: 3px solid #8b5cf6;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-main);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
