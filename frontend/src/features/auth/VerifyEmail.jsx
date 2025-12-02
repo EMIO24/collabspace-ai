@@ -5,10 +5,11 @@ import axios from 'axios';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import Card from '../../components/ui/Card/Card';
 import Button from '../../components/ui/Button/Button';
-import styles from '../../components/layouts/AuthLayout/AuthLayout.module.css';
+// CORRECTED IMPORT PATH
+import styles from '../../layout/AuthLayout/AuthLayout.module.css';
 
 const VerifyEmail = () => {
-  const { key } = useParams(); // Assuming router is /verify-email/:key
+  const { key } = useParams();
 
   const mutation = useMutation({
     mutationFn: (data) => axios.post('http://localhost:8000/api/auth/verify-email/', data),
@@ -23,21 +24,23 @@ const VerifyEmail = () => {
   const renderContent = () => {
     if (mutation.isPending) {
       return (
-        <div className="flex flex-col items-center py-8">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0' }}>
           <Loader2 className="animate-spin text-blue-600 mb-4" size={48} />
-          <p className="text-gray-600">Verifying your email address...</p>
+          <p style={{ color: 'var(--text-muted)' }}>Verifying your email address...</p>
         </div>
       );
     }
 
     if (mutation.isError) {
       return (
-        <div className="text-center py-6">
-          <div className="flex justify-center mb-4 text-red-500">
+        <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--danger)' }}>
             <XCircle size={56} />
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Verification Failed</h2>
-          <p className="text-gray-500 mb-6">
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+            Verification Failed
+          </h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
             The verification link is invalid or has expired.
           </p>
           <Link to="/login">
@@ -49,12 +52,14 @@ const VerifyEmail = () => {
 
     if (mutation.isSuccess) {
       return (
-        <div className="text-center py-6">
-          <div className="flex justify-center mb-4 text-emerald-500">
+        <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--success)' }}>
             <CheckCircle2 size={56} />
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Email Verified!</h2>
-          <p className="text-gray-500 mb-6">
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+            Email Verified!
+          </h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
             Your account has been successfully verified. You can now access the platform.
           </p>
           <Link to="/login">

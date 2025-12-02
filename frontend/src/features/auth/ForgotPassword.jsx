@@ -7,10 +7,11 @@ import axios from 'axios';
 import Card from '../../components/ui/Card/Card';
 import Button from '../../components/ui/Button/Button';
 import Input from '../../components/ui/Input/Input';
-import styles from '../../components/layouts/AuthLayout/AuthLayout.module.css';
+// CORRECTED IMPORT PATH
+import styles from '../../layout/AuthLayout/AuthLayout.module.css';
 
 const ForgotPassword = () => {
-  const { uid, token } = useParams(); // If present, we are in CONFIRM mode
+  const { uid, token } = useParams();
   const navigate = useNavigate();
   const isConfirmMode = !!uid && !!token;
 
@@ -18,7 +19,6 @@ const ForgotPassword = () => {
   const [passwords, setPasswords] = useState({ new_password: '', re_new_password: '' });
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Request Mutation
   const requestMutation = useMutation({
     mutationFn: (data) => axios.post('http://localhost:8000/api/auth/reset-password/', data),
     onSuccess: () => {
@@ -28,7 +28,6 @@ const ForgotPassword = () => {
     onError: (err) => toast.error(err.response?.data?.detail || 'Request failed')
   });
 
-  // Confirm Mutation
   const confirmMutation = useMutation({
     mutationFn: (data) => axios.post('http://localhost:8000/api/auth/reset-password-confirm/', data),
     onSuccess: () => {
@@ -59,12 +58,12 @@ const ForgotPassword = () => {
 
   if (isSuccess && !isConfirmMode) {
     return (
-      <Card className={`${styles.authCard} text-center`}>
-        <div className="flex justify-center mb-4 text-green-500">
+      <Card className={`${styles.authCard}`} style={{ textAlign: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'var(--success)' }}>
           <CheckCircle size={48} />
         </div>
         <h2 className={styles.title}>Check your inbox</h2>
-        <p className="text-gray-500 mb-6">
+        <p className={styles.subtitle} style={{ marginBottom: '1.5rem' }}>
           We've sent password reset instructions to <strong>{email}</strong>.
         </p>
         <Link to="/login">
@@ -88,7 +87,7 @@ const ForgotPassword = () => {
       </div>
 
       {isConfirmMode ? (
-        <form onSubmit={handleConfirm} className="space-y-4">
+        <form onSubmit={handleConfirm} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <Input
             label="New Password"
             type="password"
@@ -110,7 +109,7 @@ const ForgotPassword = () => {
           </Button>
         </form>
       ) : (
-        <form onSubmit={handleRequest} className="space-y-4">
+        <form onSubmit={handleRequest} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <Input
             label="Email Address"
             type="email"
@@ -126,8 +125,8 @@ const ForgotPassword = () => {
         </form>
       )}
 
-      <div className="mt-6 text-center">
-        <Link to="/login" className="flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors">
+      <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+        <Link to="/login" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           <ArrowLeft size={16} /> Back to Login
         </Link>
       </div>

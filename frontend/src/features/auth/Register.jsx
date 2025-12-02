@@ -7,7 +7,8 @@ import axios from 'axios';
 import Card from '../../components/ui/Card/Card';
 import Button from '../../components/ui/Button/Button';
 import Input from '../../components/ui/Input/Input';
-import styles from '../../components/layouts/AuthLayout/AuthLayout.module.css';
+// CORRECTED IMPORT PATH
+import styles from '../../layout/AuthLayout/AuthLayout.module.css';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -27,7 +28,6 @@ const Register = () => {
       navigate('/login');
     },
     onError: (error) => {
-      // Map dictionary errors (e.g. { username: ['Taken'] }) to toast
       const data = error.response?.data;
       if (typeof data === 'object') {
         Object.entries(data).forEach(([key, val]) => {
@@ -59,7 +59,7 @@ const Register = () => {
         <p className={styles.subtitle}>Join the team on CollabSpace AI</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <Input
           name="username"
           label="Username"
@@ -69,7 +69,7 @@ const Register = () => {
           onChange={handleChange}
         />
         
-        <div className="grid grid-cols-2 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <Input
             name="first_name"
             label="First Name"
@@ -98,7 +98,7 @@ const Register = () => {
           onChange={handleChange}
         />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <Input
             name="password"
             label="Password"
@@ -128,9 +128,9 @@ const Register = () => {
         </Button>
       </form>
 
-      <div className="mt-6 text-center text-sm text-gray-500">
+      <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
         Already have an account?{' '}
-        <Link to="/login" className="text-blue-600 font-semibold hover:underline">
+        <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>
           Sign In
         </Link>
       </div>

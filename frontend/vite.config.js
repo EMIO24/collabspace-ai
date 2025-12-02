@@ -1,48 +1,25 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-const BACKEND_TARGET = 'http://localhost:8000';
-
+// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react({
-      include: ['**/*.jsx', '**/*.js'],
-    })
-  ], 
-  
+  plugins: [react()],
   server: {
+    port: 5173, // Changed from 3000 to 5173
+    open: true, // Automatically open app in browser on start
     proxy: {
+      // Proxy API requests to backend to avoid CORS issues in dev
       '/api': {
-        target: BACKEND_TARGET,
+        target: 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
-      },
-      '/ws': {
-        target: BACKEND_TARGET,
-        ws: true,
-        changeOrigin: true,
-        secure: false,
-      },
-    },
-  },
-
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@store': path.resolve(__dirname, './src/store'),
-      '@utils': path.resolve(__dirname, './src/utils'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@pages': path.resolve(__dirname, './src/pages'),
-      '@hooks': path.resolve(__dirname, './src/hooks'),
-      '@api': path.resolve(__dirname, './src/api'),
-      '@assets': path.resolve(__dirname, './src/assets'),
-      '@styles': path.resolve(__dirname, './src/styles'),
+      }
     }
   },
-
-  build: {
-    outDir: 'dist',
-    sourcemap: true,
+  resolve: {
+    alias: {
+      // Optional: Add aliases for cleaner imports if desired
+      // '@': '/src', 
+    }
   }
-});
+})
