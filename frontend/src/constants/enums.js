@@ -1,8 +1,8 @@
 export const PRIORITY_MAP = {
-  low: { label: 'Low', color: 'info' },       // Blue
-  medium: { label: 'Medium', color: 'warning' }, // Orange
-  high: { label: 'High', color: 'danger' },   // Red
-  urgent: { label: 'Urgent', color: 'purple' } // Purple
+  low: { label: 'Low', color: 'info' },
+  medium: { label: 'Medium', color: 'warning' },
+  high: { label: 'High', color: 'danger' },
+  urgent: { label: 'Urgent', color: 'purple' }
 };
 
 export const STATUS_MAP = {

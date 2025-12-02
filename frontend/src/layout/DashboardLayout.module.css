@@ -1,93 +1,122 @@
-/* Main Container */
+/* Main Layout */
 .container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  overflow: hidden;
 }
 
-/* Sidebar */
+/* --- SIDEBAR --- */
 .sidebar {
   width: 260px;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-right: 1px solid rgba(255, 255, 255, 0.4);
+  height: 100%;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(255, 255, 255, 0.5);
   display: flex;
   flex-direction: column;
-  position: fixed;
-  height: 100vh;
+  flex-shrink: 0;
   z-index: 50;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.02);
 }
 
+/* Brand */
 .brand {
   padding: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
 }
 
 .brandLogo {
-  width: 2rem;
-  height: 2rem;
-  background: var(--primary);
+  width: 2.25rem;
+  height: 2.25rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
 }
 
 .brandName {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-main);
-  background: -webkit-linear-gradient(45deg, #6366f1, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
 }
 
-.nav {
+/* Navigation */
+.navScroll {
   flex: 1;
-  padding: 1.5rem 0.75rem;
+  overflow-y: auto;
+  padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  overflow-y: auto;
 }
 
+/* Section Headers (Replaces Tailwind classes) */
+.sectionHeader {
+  padding: 0 0.75rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.sectionHeader:first-child {
+  margin-top: 0;
+}
+
+/* Nav Items */
 .navItem {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  border-radius: 12px;
+  border-radius: 10px;
   color: var(--text-muted);
   font-weight: 500;
-  transition: all 0.2s ease;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  border: 1px solid transparent;
 }
 
 .navItem:hover {
-  background: rgba(255, 255, 255, 0.5);
-  color: var(--primary);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--text-main);
+  transform: translateX(4px);
 }
 
 .navItemActive {
-  background: var(--primary);
-  color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  background: white;
+  color: var(--primary);
+  border-color: rgba(99, 102, 241, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  font-weight: 600;
 }
 
-.navItemActive:hover {
-  background: var(--primary-hover);
-  color: white;
+.navItemActive svg {
+  stroke-width: 2.5px;
 }
 
+/* User Profile Footer */
 .userProfile {
   padding: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1px solid rgba(0,0,0,0.05);
+  background: rgba(255,255,255,0.3);
 }
 
 .userCard {
@@ -95,9 +124,16 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.userCard:hover {
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .userInfo {
@@ -122,57 +158,58 @@
   text-overflow: ellipsis;
 }
 
-/* Topbar */
+/* --- MAIN CONTENT AREA --- */
 .mainContent {
   flex: 1;
-  margin-left: 260px; /* Match sidebar width */
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
 }
 
+/* Topbar */
 .topbar {
-  height: 4rem;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  height: 4.5rem;
+  padding: 0 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2rem;
-  position: sticky;
-  top: 0;
-  z-index: 40;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .searchWrapper {
   position: relative;
-  width: 320px;
+  width: 400px;
 }
 
 .searchIcon {
   position: absolute;
-  left: 0.75rem;
+  left: 1rem;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-muted);
+  pointer-events: none;
 }
 
 .searchInput {
   width: 100%;
-  padding: 0.6rem 1rem 0.6rem 2.5rem;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.1);
-  background: rgba(255, 255, 255, 0.5);
-  font-size: 0.875rem;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  color: var(--text-main);
   outline: none;
   transition: all 0.2s;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .searchInput:focus {
   background: white;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 4px var(--primary-light);
 }
 
 .actions {
@@ -182,46 +219,65 @@
 }
 
 .iconBtn {
-  background: transparent;
-  border: none;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  transition: background 0.2s;
+  padding: 0.6rem;
+  border-radius: 10px;
+  transition: all 0.2s;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .iconBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--text-main);
+  background: white;
+  color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transform: translateY(-1px);
 }
 
 .badge {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 8px;
-  height: 8px;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
   background: var(--danger);
   border-radius: 50%;
   border: 2px solid white;
 }
 
-/* Content Area */
+/* Page Content */
 .pageContent {
   flex: 1;
-  padding: 2rem;
+  overflow-y: auto;
   overflow-x: hidden;
+  padding: 2rem;
+  scroll-behavior: smooth;
 }
 
 /* Footer */
 .footer {
   padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.3);
-  border-top: 1px solid rgba(0,0,0,0.05);
-  font-size: 0.75rem;
-  color: var(--text-muted);
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.2);
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.link {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link:hover {
+  color: var(--primary);
+  text-decoration: underline;
 }

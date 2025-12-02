@@ -1,0 +1,208 @@
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Header & Filters */
+.header {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.toolbar {
+  display: flex;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.filterSelect {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 0.875rem;
+  color: var(--text-main);
+  outline: none;
+  min-width: 150px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterSelect:hover, .filterSelect:focus {
+  background: white;
+  border-color: var(--primary);
+}
+
+/* Timeline Layout */
+.timelineWrapper {
+  position: relative;
+  padding-left: 2rem;
+  padding-bottom: 2rem;
+}
+
+/* The Vertical Line */
+.timelineLine {
+  position: absolute;
+  left: 27px; /* Aligns with icon center */
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--glass-border) 0%, rgba(0,0,0,0.05) 100%);
+  z-index: 0;
+}
+
+.eventRow {
+  position: relative;
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  z-index: 1; /* Above line */
+}
+
+/* Icons */
+.iconWrapper {
+  width: 3.5rem;
+  height: 3.5rem; /* Matches layout for nice spacing */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-shrink: 0;
+  background: transparent; 
+}
+
+.iconCircle {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 4px solid #f5f7fa; /* Matches page bg for "cutout" look */
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+/* Event Types Colors */
+.type_task { color: var(--primary); border-color: var(--primary-light); }
+.type_comment { color: var(--info); border-color: var(--info-light); }
+.type_file { color: var(--warning); border-color: var(--warning-light); }
+.type_alert { color: var(--danger); border-color: var(--danger-light); }
+.type_success { color: var(--success); border-color: var(--success-light); }
+
+/* Event Card */
+.eventCard {
+  flex: 1;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: transform 0.2s;
+}
+
+.eventCard:hover {
+  transform: translateX(4px);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.eventHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.eventUser {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.eventAction {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.eventTime {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Diff View */
+.diffContainer {
+  margin-top: 0.75rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+  padding: 0.75rem;
+  border-left: 3px solid var(--primary);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.diffItem {
+  display: grid;
+  grid-template-columns: 100px 1fr auto 1fr;
+  gap: 0.5rem;
+  align-items: center;
+  color: var(--text-main);
+}
+
+.diffLabel {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.oldValue {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.newValue {
+  color: var(--success);
+  background: rgba(34, 197, 94, 0.1);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 2rem 0;
+}

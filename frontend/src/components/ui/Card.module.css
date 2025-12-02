@@ -1,0 +1,17 @@
+.card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-strength));
+  -webkit-backdrop-filter: blur(var(--blur-strength));
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
+  color: var(--color-text-main);
+  transition: transform var(--transition-base);
+}
+
+.card:hover {
+  /* Subtle lift effect for interactivity */
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.25);
+}

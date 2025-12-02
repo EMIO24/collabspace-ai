@@ -1,0 +1,107 @@
+.container {
+  height: calc(100vh - 180px);
+  padding: 1rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+/* --- FullCalendar Overrides --- */
+/* We use :global because FullCalendar generates its own class names */
+
+:global(.fc) {
+  height: 100%;
+  font-family: inherit;
+  --fc-border-color: rgba(0, 0, 0, 0.05);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: rgba(255, 255, 255, 0.3);
+  --fc-list-event-hover-bg-color: rgba(255, 255, 255, 0.5);
+  --fc-today-bg-color: rgba(99, 102, 241, 0.1) !important;
+}
+
+:global(.fc-theme-standard td), 
+:global(.fc-theme-standard th) {
+  border-color: var(--fc-border-color);
+}
+
+:global(.fc-col-header-cell) {
+  background: rgba(255, 255, 255, 0.4);
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+:global(.fc-daygrid-day-number) {
+  font-size: 0.85rem;
+  color: var(--text-main);
+  padding: 0.5rem;
+  font-weight: 500;
+}
+
+/* Event Styling */
+:global(.fc-event) {
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: transform 0.1s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+:global(.fc-event):hover {
+  transform: scale(1.02);
+  z-index: 5;
+}
+
+/* Priority Colors applied via classNames in JS */
+:global(.event-high) {
+  background-color: rgba(254, 226, 226, 0.9);
+  border-left: 3px solid #ef4444;
+  color: #7f1d1d;
+}
+
+:global(.event-medium) {
+  background-color: rgba(254, 243, 199, 0.9);
+  border-left: 3px solid #f59e0b;
+  color: #78350f;
+}
+
+:global(.event-low) {
+  background-color: rgba(219, 234, 254, 0.9);
+  border-left: 3px solid #3b82f6;
+  color: #1e3a8a;
+}
+
+/* Header Toolbar */
+:global(.fc-toolbar-title) {
+  font-size: 1.5rem !important;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+:global(.fc-button) {
+  background: white !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-muted) !important;
+  font-weight: 600 !important;
+  text-transform: capitalize;
+  box-shadow: none !important;
+  transition: all 0.2s;
+}
+
+:global(.fc-button-active) {
+  background: var(--primary) !important;
+  color: white !important;
+  border-color: var(--primary) !important;
+}
+
+:global(.fc-button):hover {
+  background: #f9fafb !important;
+  color: var(--text-main) !important;
+}
