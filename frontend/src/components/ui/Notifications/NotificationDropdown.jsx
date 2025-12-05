@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, X } from 'lucide-react';
 import { api } from '../../../services/api';
@@ -7,10 +7,17 @@ import styles from './NotificationDropdown.module.css';
 const NotificationDropdown = ({ onClose }) => {
   const queryClient = useQueryClient();
 
-  const { data: notifications } = useQuery({
+  const { data: rawData } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => (await api.get('/notifications/')).data
   });
+
+  const notifications = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData.results && Array.isArray(rawData.results)) return rawData.results;
+    return [];
+  }, [rawData]);
 
   const readMutation = useMutation({
     mutationFn: (id) => api.post(`/notifications/${id}/mark_as_read/`),
@@ -27,7 +34,7 @@ const NotificationDropdown = ({ onClose }) => {
       </div>
       
       <div className={styles.list}>
-        {notifications?.map(notif => (
+        {notifications.map(notif => (
           <div 
             key={notif.id} 
             className={`${styles.item} ${!notif.is_read ? styles.itemUnread : ''}`}
@@ -42,7 +49,7 @@ const NotificationDropdown = ({ onClose }) => {
             </div>
           </div>
         ))}
-        {!notifications?.length && (
+        {!notifications.length && (
           <div className={styles.empty}>All caught up!</div>
         )}
       </div>

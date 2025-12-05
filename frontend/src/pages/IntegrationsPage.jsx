@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { api } from '../services/api';
@@ -12,17 +12,23 @@ const IntegrationsPage = () => {
   const [selectedIntegration, setSelectedIntegration] = useState(null);
   const [token, setToken] = useState('');
 
-  // 1. Fetch Integrations
-  const { data: integrations, isLoading } = useQuery({
+  // 1. Fetch Raw Data
+  const { data: rawData, isLoading } = useQuery({
     queryKey: ['integrations'],
     queryFn: async () => {
       const res = await api.get('/integrations/integrations/');
       return res.data; 
-      // Expected: [{ id: 1, provider: 'github', name: 'GitHub', status: 'disconnected', ... }]
     }
   });
 
-  // 2. Connect Mutation (Token Flow)
+  // 2. Normalize Data
+  const integrations = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData.results && Array.isArray(rawData.results)) return rawData.results;
+    return [];
+  }, [rawData]);
+
   const connectMutation = useMutation({
     mutationFn: (data) => api.post('/integrations/integrations/', data),
     onSuccess: () => {
@@ -34,7 +40,6 @@ const IntegrationsPage = () => {
   });
 
   const handleConnectClick = (integration) => {
-    // If it's a simple token flow (like prompt requested for GitHub via POST)
     setSelectedIntegration(integration);
   };
 
@@ -63,7 +68,7 @@ const IntegrationsPage = () => {
       <div className={styles.grid}>
         {isLoading ? (
           <div>Loading marketplace...</div>
-        ) : integrations?.map((integration) => (
+        ) : integrations.map((integration) => (
           <IntegrationCard 
             key={integration.id} 
             integration={integration} 
@@ -72,7 +77,6 @@ const IntegrationsPage = () => {
         ))}
       </div>
 
-      {/* Connect Modal (Token Input) */}
       {selectedIntegration && (
         <div className={styles.modalOverlay} onClick={closeModal}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>

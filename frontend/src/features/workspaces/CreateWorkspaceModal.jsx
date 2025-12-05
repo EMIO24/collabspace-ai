@@ -7,90 +7,67 @@ import Input from '../../components/ui/Input/Input';
 import Button from '../../components/ui/Button/Button';
 import styles from './CreateWorkspaceModal.module.css';
 
-const CreateWorkspaceModal = ({ onClose, initialData = null }) => {
+const CreateWorkspaceModal = ({ onClose }) => {
   const queryClient = useQueryClient();
   const { setCurrentWorkspace, refetchWorkspaces } = useWorkspace();
-  const isEditMode = !!initialData;
   
   const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    slug: initialData?.slug || '',
-    description: initialData?.description || ''
+    name: '',
+    description: '',
+    // Hidden setting field as per requirements
+    settings: {
+      theme: 'light'
+    }
   });
 
-  // Create Mutation
   const createMutation = useMutation({
     mutationFn: (data) => api.post('/workspaces/', data),
     onSuccess: (res) => {
       refetchWorkspaces();
       setCurrentWorkspace(res.data);
-      toast.success('Workspace created!');
+      toast.success('Workspace created successfully!');
       onClose();
     },
     onError: () => toast.error('Failed to create workspace.')
   });
 
-  // Edit Mutation
-  const editMutation = useMutation({
-    mutationFn: (data) => api.put(`/workspaces/${initialData?.id}/`, data),
-    onSuccess: (res) => {
-      refetchWorkspaces();
-      // Only update current context if we edited the active one
-      if (initialData.id === res.data.id) {
-        setCurrentWorkspace(res.data);
-      }
-      toast.success('Workspace updated!');
-      onClose();
-    },
-    onError: () => toast.error('Failed to update workspace.')
-  });
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (isEditMode) {
-      editMutation.mutate(formData);
-    } else {
-      createMutation.mutate(formData);
-    }
+    createMutation.mutate(formData);
   };
-
-  const isLoading = createMutation.isPending || editMutation.isPending;
 
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()}>
-        <h2 className={styles.title}>
-          {isEditMode ? 'Edit Workspace' : 'Create New Workspace'}
-        </h2>
+        <div className={styles.header}>
+          <h2 className={styles.title}>Create Workspace</h2>
+          <p className={styles.subtitle}>Set up a new shared environment for your team.</p>
+        </div>
         
         <form onSubmit={handleSubmit} className={styles.form}>
           <Input 
             label="Workspace Name"
             value={formData.name}
             onChange={(e) => setFormData({...formData, name: e.target.value})}
-            placeholder="Acme Corp"
+            placeholder="e.g. Engineering Team"
             required
-          />
-          
-          <Input 
-            label="URL Slug"
-            value={formData.slug}
-            onChange={(e) => setFormData({...formData, slug: e.target.value})}
-            placeholder="acme-corp"
-            required
+            autoFocus
           />
 
-          <Input 
-            label="Description"
-            value={formData.description}
-            onChange={(e) => setFormData({...formData, description: e.target.value})}
-            placeholder="What is this team for?"
-          />
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+            <textarea 
+              className={styles.textArea}
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              placeholder="What is this workspace for?"
+            />
+          </div>
 
           <div className={styles.actions}>
             <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" isLoading={isLoading}>
-              {isEditMode ? 'Save Changes' : 'Create Workspace'}
+            <Button type="submit" isLoading={createMutation.isPending}>
+              Create Workspace
             </Button>
           </div>
         </form>

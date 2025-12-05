@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { 
@@ -46,11 +46,21 @@ const ProjectTimelinePage = () => {
       const res = await api.get(`/projects/${id}/activity/?${params.toString()}`);
       return res.data; 
     },
-    getNextPageParam: (lastPage) => lastPage.next || undefined,
+    getNextPageParam: (lastPage) => lastPage?.next ? lastPage.next : undefined,
     enabled: !!id
   });
 
-  const allEvents = data?.pages.flatMap(page => page.results) || [];
+  // SAFETY CHECK: Normalize data to handle both array and paginated responses
+  const allEvents = useMemo(() => {
+    if (!data?.pages) return [];
+    
+    return data.pages.flatMap(page => {
+      if (!page) return [];
+      if (Array.isArray(page)) return page;
+      if (page.results && Array.isArray(page.results)) return page.results;
+      return [];
+    });
+  }, [data]);
 
   const handleLoadMore = () => {
     fetchNextPage();
@@ -109,11 +119,14 @@ const ProjectTimelinePage = () => {
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading history...</div>
         ) : allEvents.length > 0 ? (
-          allEvents.map((event) => {
-            const { icon: Icon, style } = getEventConfig(event.type);
+          allEvents.map((event, index) => {
+            // --- CRITICAL FIX: Safety check for undefined event ---
+            if (!event) return null;
+            
+            const { icon: Icon, style } = getEventConfig(event.type || 'default');
             
             return (
-              <div key={event.id} className={styles.eventRow}>
+              <div key={event.id || index} className={styles.eventRow}>
                 {/* Icon Column */}
                 <div className={styles.iconWrapper}>
                   <div className={`${styles.iconCircle} ${style}`}>
@@ -125,16 +138,16 @@ const ProjectTimelinePage = () => {
                 <div className={styles.eventCard}>
                   <div className={styles.eventHeader}>
                     <Avatar 
-                      src={event.user.avatar} 
-                      fallback={event.user.username[0]} 
+                      src={event.user?.avatar} 
+                      fallback={event.user?.username?.[0] || '?'} 
                       size="sm" 
                     />
                     <div>
-                      <span className={styles.eventUser}>{event.user.username}</span>
+                      <span className={styles.eventUser}>{event.user?.username || 'Unknown User'}</span>
                       <span className={styles.eventAction}> {event.description}</span>
                     </div>
                     <span className={styles.eventTime}>
-                      {new Date(event.timestamp).toLocaleString()}
+                      {event.timestamp ? new Date(event.timestamp).toLocaleString() : ''}
                     </span>
                   </div>
 

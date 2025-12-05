@@ -6,19 +6,27 @@ import Input from '../../components/ui/Input/Input';
 import Button from '../../components/ui/Button/Button';
 import styles from '../workspaces/CreateWorkspaceModal.module.css'; // Reusing modal styles
 
-const CreateTaskModal = ({ projectId, onClose }) => {
+const CreateTaskModal = ({ projectId, initialStatus, initialDate, onClose }) => {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     title: '',
     priority: 'medium',
-    status: 'todo',
-    due_date: ''
+    status: initialStatus || 'todo',
+    due_date: initialDate || ''
   });
 
   const mutation = useMutation({
-    mutationFn: (data) => api.post('/tasks/tasks/', { ...data, project: projectId }),
+    mutationFn: (data) => {
+        // Ensure we have a project ID. If not passed, user might need to select one or backend defaults.
+        // For this implementation, we assume a default project or the backend handles it contextually.
+        const payload = { ...data };
+        if (projectId) payload.project = projectId;
+        return api.post('/tasks/tasks/', payload);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries(['tasks', projectId]);
+      queryClient.invalidateQueries(['tasks']);
+      queryClient.invalidateQueries(['myTasks']);
+      queryClient.invalidateQueries(['taskCalendar']);
       toast.success('Task added');
       onClose();
     },
@@ -45,31 +53,30 @@ const CreateTaskModal = ({ projectId, onClose }) => {
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className={styles.selectWrapper}>
-              <label className={styles.label}>Priority</label>
+              <label style={{display:'block', fontSize:'0.875rem', fontWeight:600, marginBottom:'0.5rem', color:'#374151'}}>Priority</label>
               <select 
-                className={styles.input} // Reusing Input styles if possible or custom
                 value={formData.priority}
                 onChange={e => setFormData({...formData, priority: e.target.value})}
-                style={{ border: '1px solid rgba(0,0,0,0.1)', padding: '0.75rem', borderRadius: '8px', width: '100%', background: 'rgba(255,255,255,0.5)' }}
+                style={{ width:'100%', padding:'0.75rem', borderRadius:'8px', border:'1px solid #e5e7eb', background:'white' }}
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
+                <option value="urgent">Urgent</option>
               </select>
             </div>
 
             <div className={styles.selectWrapper}>
-              <label className={styles.label}>Status</label>
+              <label style={{display:'block', fontSize:'0.875rem', fontWeight:600, marginBottom:'0.5rem', color:'#374151'}}>Status</label>
               <select 
-                className={styles.input}
                 value={formData.status}
                 onChange={e => setFormData({...formData, status: e.target.value})}
-                style={{ border: '1px solid rgba(0,0,0,0.1)', padding: '0.75rem', borderRadius: '8px', width: '100%', background: 'rgba(255,255,255,0.5)' }}
+                style={{ width:'100%', padding:'0.75rem', borderRadius:'8px', border:'1px solid #e5e7eb', background:'white' }}
               >
                 <option value="todo">To Do</option>
                 <option value="in_progress">In Progress</option>
                 <option value="review">Review</option>
-                <option value="completed">Completed</option>
+                <option value="done">Done</option>
               </select>
             </div>
           </div>

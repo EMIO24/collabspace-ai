@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bot, FileText, Sparkles, CheckSquare, Calendar, Clock, Mic } from 'lucide-react';
 import { api } from '../../services/api';
@@ -7,13 +7,20 @@ import styles from './MeetingIntelligence.module.css';
 const MeetingIntelligence = () => {
   const [selectedId, setSelectedId] = useState(null);
 
-  // 1. Fetch List
-  const { data: meetings, isLoading: listLoading } = useQuery({
+  // 1. Fetch Raw Data
+  const { data: rawData, isLoading: listLoading } = useQuery({
     queryKey: ['meetings'],
     queryFn: async () => (await api.get('/ai/meetings/')).data
   });
 
-  // 2. Fetch Details (Dependent on selection)
+  // 2. Normalize Data
+  const meetings = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData.results && Array.isArray(rawData.results)) return rawData.results;
+    return [];
+  }, [rawData]);
+
   const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ['meeting', selectedId],
     queryFn: async () => (await api.get(`/ai/meetings/${selectedId}/`)).data,
@@ -30,7 +37,6 @@ const MeetingIntelligence = () => {
 
   return (
     <div className={styles.container}>
-      {/* Sidebar List */}
       <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           <h2 className={styles.title}>
@@ -41,7 +47,7 @@ const MeetingIntelligence = () => {
         <div className={styles.list}>
           {listLoading ? (
             <div className="p-4 text-center text-gray-400">Loading...</div>
-          ) : meetings?.map((meeting) => (
+          ) : meetings.map((meeting) => (
             <div 
               key={meeting.id}
               className={`${styles.card} ${selectedId === meeting.id ? styles.cardActive : ''}`}
@@ -56,10 +62,12 @@ const MeetingIntelligence = () => {
               </div>
             </div>
           ))}
+          {!listLoading && !meetings.length && (
+            <div className="p-4 text-center text-gray-400">No meetings found.</div>
+          )}
         </div>
       </div>
 
-      {/* Detail View */}
       <div className={styles.detail}>
         {!selectedId ? (
           <div className={styles.emptyState}>
@@ -79,13 +87,11 @@ const MeetingIntelligence = () => {
             </div>
 
             <div className={styles.contentGrid}>
-              {/* Left: Transcript */}
               <div className={`${styles.column} ${styles.columnLeft}`}>
                 <h3 className={styles.columnHeader}>
                   <Mic size={18} className="text-gray-400" /> Full Transcript
                 </h3>
                 <div className={styles.transcriptText}>
-                  {/* Mocking transcript format if string or array */}
                   {Array.isArray(detail.transcript) 
                     ? detail.transcript.map((line, i) => (
                         <p key={i} className="mb-2">
@@ -98,7 +104,6 @@ const MeetingIntelligence = () => {
                 </div>
               </div>
 
-              {/* Right: AI Insights */}
               <div className={styles.column}>
                 <div className={styles.aiSection}>
                   <h3 className={styles.columnHeader} style={{ color: '#7c3aed' }}>

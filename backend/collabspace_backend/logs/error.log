@@ -120,3 +120,7 @@ ERROR 2025-11-30 04:58:32,637 log 23527 140109895362240 Internal Server Error: /
 ERROR 2025-11-30 05:06:29,391 log 23584 140626574894784 Internal Server Error: /api/workspaces/invitations/accept/
 ERROR 2025-11-30 19:46:47,175 log 23910 140400593462976 Internal Server Error: /api/ai/tasks/breakdown/
 ERROR 2025-11-30 20:32:58,723 log 24039 140088772110016 Internal Server Error: /api/messaging/channels/
+ERROR 2025-12-03 19:37:59,166 log 172 139886108272320 Internal Server Error: /api/auth/login/
+ERROR 2025-12-03 19:38:00,626 log 172 139886108272320 Internal Server Error: /api/auth/login/
+ERROR 2025-12-04 17:17:34,626 log 126 140437645948608 Internal Server Error: /api/projects/
+ERROR 2025-12-04 17:17:35,720 log 126 140437645948608 Internal Server Error: /api/projects/

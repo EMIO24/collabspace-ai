@@ -1,14 +1,14 @@
 .column {
-  min-width: 320px;
-  max-width: 320px;
-  background: rgba(243, 244, 246, 0.6); /* Translucent gray */
-  border-radius: 12px;
+  min-width: 300px;
+  max-width: 300px;
+  background: #f1f5f9;
+  border-radius: 16px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
   height: max-content;
   max-height: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0,0,0,0.05);
 }
 
 .header {
@@ -22,7 +22,7 @@
 .title {
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   display: flex;
@@ -31,21 +31,46 @@
 }
 
 .count {
-  background: rgba(0, 0, 0, 0.06);
-  padding: 0.1rem 0.5rem;
+  background: rgba(0, 0, 0, 0.08);
+  padding: 0.1rem 0.6rem;
   border-radius: 999px;
   font-size: 0.75rem;
-  color: var(--text-main);
+  color: #1e293b;
+  font-weight: 700;
+}
+
+/* Add Task Button inside column */
+.addBtn {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 0.5rem;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+}
+
+.addBtn:hover {
+  background: white;
+  border-color: #94a3b8;
+  color: #1e293b;
 }
 
 .taskList {
   flex: 1;
   overflow-y: auto;
-  min-height: 100px; /* Ensure droppable area exists even if empty */
-  padding-right: 4px; /* Space for scrollbar */
+  min-height: 100px;
+  padding-right: 2px;
 }
 
-/* Custom Scrollbar for columns */
 .taskList::-webkit-scrollbar {
   width: 4px;
 }

@@ -1,85 +1,165 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Folder } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Trash2, Archive, CheckSquare, Filter, FolderPlus } from 'lucide-react';
 import { api } from '../services/api';
-import { useWorkspace } from '../context/WorkspaceContext';
+import { useNavigate } from 'react-router-dom';
 import ProjectCard from '../features/projects/ProjectCard';
 import CreateProjectModal from '../features/projects/CreateProjectModal';
 import Button from '../components/ui/Button/Button';
 import styles from './ProjectsPage.module.css';
+import { toast } from 'react-hot-toast';
+
+const FILTERS = ['All', 'Active', 'On Hold', 'Completed'];
 
 const ProjectsPage = () => {
-  const { currentWorkspace } = useWorkspace();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('-updated_at');
+  const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ['projects', currentWorkspace?.id],
+  // 1. Fetch Projects with Filters
+  const { data: rawProjects, isLoading } = useQuery({
+    queryKey: ['projects', activeFilter, sortBy, search],
     queryFn: async () => {
-      if (!currentWorkspace) return [];
-      const res = await api.get(`/projects/?workspace=${currentWorkspace.id}`);
+      const params = new URLSearchParams();
+      if (activeFilter !== 'All') params.append('status', activeFilter.toLowerCase().replace(' ', '_'));
+      if (search) params.append('search', search);
+      params.append('ordering', sortBy);
+      
+      const res = await api.get(`/projects/?${params.toString()}`);
       return res.data;
-    },
-    enabled: !!currentWorkspace
+    }
   });
 
-  const handleProjectClick = (projectId) => {
-    // In a real router, navigate here: navigate(`/projects/${projectId}`);
-    console.log('Navigate to project:', projectId);
+  const projects = useMemo(() => {
+    if (!rawProjects) return [];
+    const list = Array.isArray(rawProjects) ? rawProjects : (rawProjects?.results || []);
+    return list;
+  }, [rawProjects]);
+
+  // 2. Bulk Selection Logic
+  const toggleSelection = (id) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
   };
 
-  if (!currentWorkspace) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.emptyState}>
-          <Folder size={48} className="text-gray-300" />
-          <h3 className={styles.emptyTitle}>No Workspace Selected</h3>
-          <p className={styles.emptyDesc}>Please select or create a workspace from the sidebar to view projects.</p>
-        </div>
-      </div>
-    );
-  }
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids) => {
+      // Parallel delete requests
+      await Promise.all(ids.map(id => api.delete(`/projects/${id}/`)));
+    },
+    onSuccess: () => {
+      toast.success(`Deleted ${selectedIds.size} projects`);
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries(['projects']);
+    }
+  });
 
   return (
     <div className={styles.container}>
+      {/* Header */}
       <div className={styles.header}>
-        <h1 className={styles.heading}>Projects</h1>
+        <div>
+          <h1 className={styles.title}>Projects</h1>
+          <p className={styles.subtitle}>Manage your team's initiatives and goals.</p>
+        </div>
         <Button onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} />
-          New Project
+          <Plus size={18} className="mr-2" /> New Project
         </Button>
       </div>
 
+      {/* Toolbar */}
+      <div className={styles.toolbar}>
+        <div className={styles.filters}>
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              className={`${styles.filterChip} ${activeFilter === f ? styles.activeChip : ''}`}
+              onClick={() => setActiveFilter(f)}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.actions}>
+          <div className={styles.searchWrapper}>
+             <Search size={16} className={styles.searchIcon} />
+             <input 
+               className={styles.searchInput} 
+               placeholder="Search projects..." 
+               value={search}
+               onChange={(e) => setSearch(e.target.value)}
+             />
+          </div>
+          <select 
+            className={styles.select}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="-updated_at">Last Updated</option>
+            <option value="name">Alphabetical</option>
+            <option value="due_date">Due Date</option>
+            <option value="-progress">Progress</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Grid View */}
       <div className={styles.grid}>
         {isLoading ? (
-          // Skeleton loaders
-          [1, 2, 3, 4].map((i) => (
-            <div 
-              key={i} 
-              className="animate-pulse bg-white/20 rounded-2xl h-64 border border-white/30"
-            />
-          ))
-        ) : projects && projects.length > 0 ? (
-          projects.map((project) => (
+          <div className="col-span-full text-center py-20 text-gray-400">Loading projects...</div>
+        ) : projects.length > 0 ? (
+          projects.map(project => (
             <ProjectCard
               key={project.id}
               project={project}
-              onClick={() => handleProjectClick(project.id)}
+              onClick={() => navigate(`/projects/${project.id}`)}
+              selectable={true}
+              selected={selectedIds.has(project.id)}
+              onSelect={() => toggleSelection(project.id)}
             />
           ))
         ) : (
           <div className={styles.emptyState}>
-            <Folder size={48} className="text-gray-300" />
-            <h3 className={styles.emptyTitle}>No projects yet</h3>
-            <p className={styles.emptyDesc}>
-              Get started by creating your first project in <strong>{currentWorkspace.name}</strong>.
-            </p>
+            <FolderPlus size={64} className="mx-auto mb-4 opacity-20" />
+            <h3 className="text-xl font-bold text-gray-700">No projects found</h3>
+            <p className="text-gray-500 mb-6">Get started by creating your first project.</p>
+            <Button variant="ghost" onClick={() => setIsModalOpen(true)}>Create Project</Button>
           </div>
         )}
       </div>
 
-      {isModalOpen && (
-        <CreateProjectModal onClose={() => setIsModalOpen(false)} />
+      {/* Floating Bulk Actions */}
+      {selectedIds.size > 0 && (
+        <div className={styles.bulkBar}>
+          <div className={styles.bulkInfo}>
+            <CheckSquare size={18} className="text-blue-400" />
+            {selectedIds.size} selected
+          </div>
+          <div className={styles.bulkActions}>
+            <button 
+               className={`${styles.bulkBtn} ${styles.deleteBtn}`} 
+               onClick={() => {
+                 if(confirm(`Delete ${selectedIds.size} projects?`)) 
+                   bulkDeleteMutation.mutate(Array.from(selectedIds));
+               }}
+            >
+              <Trash2 size={16} /> Delete
+            </button>
+            <button className={styles.bulkBtn} onClick={() => setSelectedIds(new Set())}>
+               Cancel
+            </button>
+          </div>
+        </div>
       )}
+
+      {isModalOpen && <CreateProjectModal onClose={() => setIsModalOpen(false)} />}
     </div>
   );
 };

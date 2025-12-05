@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Settings, Users, AlertTriangle, Save, Trash2, Plus 
-} from 'lucide-react';
+import { Settings, Users, AlertTriangle, Save, Tag, Plus, X, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { api } from '../../services/api';
-
 import Input from '../../components/ui/Input/Input';
 import Button from '../../components/ui/Button/Button';
 import Avatar from '../../components/ui/Avatar/Avatar';
@@ -16,6 +13,7 @@ import styles from './ProjectSettings.module.css';
 const TABS = {
   GENERAL: 'general',
   MEMBERS: 'members',
+  LABELS: 'labels',
   DANGER: 'danger'
 };
 
@@ -25,7 +23,7 @@ const ProjectSettings = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(TABS.GENERAL);
 
-  // --- TAB 1: GENERAL SETTINGS ---
+  // --- TAB 1: GENERAL ---
   const GeneralSettings = () => {
     const { data: project } = useQuery({
       queryKey: ['project', id],
@@ -68,10 +66,10 @@ const ProjectSettings = () => {
             value={formData.slug}
             onChange={e => setFormData({...formData, slug: e.target.value})}
           />
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700 ml-1">Description</label>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Description</label>
             <textarea
-              className="w-full p-3 rounded-lg border border-gray-200 bg-white/50 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className={styles.textArea}
               rows={4}
               value={formData.description}
               onChange={e => setFormData({...formData, description: e.target.value})}
@@ -91,9 +89,9 @@ const ProjectSettings = () => {
               onChange={e => setFormData({...formData, end_date: e.target.value})}
             />
           </div>
-          <div className="flex justify-end pt-4">
+          <div className={styles.actions}>
             <Button type="submit" isLoading={mutation.isPending}>
-              <Save size={18} className="mr-2" /> Save Changes
+              <Save size={18} style={{ marginRight: '0.5rem' }} /> Save Changes
             </Button>
           </div>
         </form>
@@ -101,28 +99,33 @@ const ProjectSettings = () => {
     );
   };
 
-  // --- TAB 2: MEMBERS MANAGEMENT ---
+  // --- TAB 2: MEMBERS ---
   const MembersSettings = () => {
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [emailToAdd, setEmailToAdd] = useState('');
-
-    const { data: members } = useQuery({
+    
+    const { data: rawMembers } = useQuery({
       queryKey: ['projectMembers', id],
-      queryFn: async () => (await api.get(`/projects/${id}/members/`)).data,
+      queryFn: async () => (await api.get(`/projects/${id}/members/`)).data
     });
 
-    const addMutation = useMutation({
-      mutationFn: (email) => api.post(`/projects/${id}/members/`, { email, role: 'member' }),
+    // FIX: Data Normalization
+    const members = useMemo(() => {
+      if (!rawMembers) return [];
+      if (Array.isArray(rawMembers)) return rawMembers;
+      return rawMembers.results || [];
+    }, [rawMembers]);
+
+    const addMemberMutation = useMutation({
+      mutationFn: (email) => api.post(`/projects/${id}/members/`, { email }),
       onSuccess: () => {
         queryClient.invalidateQueries(['projectMembers', id]);
-        toast.success('Member added');
-        setIsAddModalOpen(false);
+        toast.success('Member invited');
         setEmailToAdd('');
       },
-      onError: () => toast.error('Failed to add member')
+      onError: () => toast.error('Failed to invite member')
     });
 
-    const removeMutation = useMutation({
+    const removeMemberMutation = useMutation({
       mutationFn: (userId) => api.delete(`/projects/${id}/members/${userId}/`),
       onSuccess: () => {
         queryClient.invalidateQueries(['projectMembers', id]);
@@ -131,169 +134,198 @@ const ProjectSettings = () => {
     });
 
     return (
-      <div className={styles.contentCard}>
-        <div className={styles.memberHeader}>
-          <h2 className={styles.sectionTitle} style={{ margin: 0, border: 'none' }}>Team Members</h2>
-          <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
-            <Plus size={16} className="mr-2" /> Add Member
-          </Button>
-        </div>
-
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Role</th>
-                <th>Joined</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members?.map(member => (
-                <tr key={member.id}>
-                  <td>
-                    <div className={styles.userCell}>
-                      <Avatar src={member.avatar} fallback={member.username[0]} />
-                      <div>
-                        <div className={styles.userName}>{member.first_name} {member.last_name}</div>
-                        <div className={styles.userEmail}>{member.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <Badge variant="purple">{member.role || 'Member'}</Badge>
-                  </td>
-                  <td className="text-sm text-gray-500">
-                    {new Date(member.date_joined).toLocaleDateString()}
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button 
-                      className={styles.actionBtn}
-                      onClick={() => {
-                        if (confirm('Remove this user?')) removeMutation.mutate(member.id);
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {isAddModalOpen && (
-          <div className={styles.overlay} onClick={() => setIsAddModalOpen(false)}>
-            <div className={styles.modal} onClick={e => e.stopPropagation()}>
-              <h3 className="text-lg font-bold mb-4">Add Team Member</h3>
-              <Input 
-                label="User Email"
-                placeholder="colleague@company.com"
-                value={emailToAdd}
-                onChange={e => setEmailToAdd(e.target.value)}
-                autoFocus
-              />
-              <div className="flex justify-end gap-2 mt-6">
-                <Button variant="ghost" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-                <Button onClick={() => addMutation.mutate(emailToAdd)} isLoading={addMutation.isPending}>
-                  Send Invite
-                </Button>
-              </div>
+        <div className={styles.contentCard}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 className={styles.sectionTitle} style={{margin:0, border:'none'}}>Team Members</h2>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                        className={styles.confirmInput} 
+                        style={{ marginBottom: 0, minWidth: '200px' }}
+                        placeholder="Enter email..."
+                        value={emailToAdd}
+                        onChange={(e) => setEmailToAdd(e.target.value)}
+                    />
+                    <Button size="sm" onClick={() => addMemberMutation.mutate(emailToAdd)} disabled={!emailToAdd}>
+                        <Plus size={16} /> Add
+                    </Button>
+                </div>
             </div>
-          </div>
-        )}
-      </div>
+
+            <div style={{ overflowX: 'auto' }}>
+                <table className={styles.table}>
+                    <thead>
+                        <tr>
+                            <th>USER</th>
+                            <th>ROLE</th>
+                            <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {members.map(member => (
+                            <tr key={member.id}>
+                                <td>
+                                    <div className={styles.userCell}>
+                                        <Avatar src={member.avatar} fallback={member.username?.[0] || 'U'} size="sm" />
+                                        <div>
+                                            <div className={styles.userName}>
+                                                {member.first_name ? `${member.first_name} ${member.last_name}` : member.username}
+                                            </div>
+                                            <div className={styles.userEmail}>{member.email}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><Badge variant="blue">{member.role || 'Member'}</Badge></td>
+                                <td style={{ textAlign: 'right' }}>
+                                    <button 
+                                        className={styles.iconBtn}
+                                        onClick={() => { if(confirm('Remove user?')) removeMemberMutation.mutate(member.id) }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                        {!members.length && <tr><td colSpan="3" style={{padding:'2rem', textAlign:'center', color:'#9ca3af'}}>No members yet.</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     );
   };
 
-  // --- TAB 3: DANGER ZONE ---
-  const DangerSettings = () => {
-    const [confirmText, setConfirmText] = useState('');
+  // --- TAB 3: LABELS ---
+  const LabelsSettings = () => {
+    const [newLabel, setNewLabel] = useState('');
     
-    // UPDATED: Archive now uses PUT update instead of custom endpoint
-    const archiveMutation = useMutation({
-      mutationFn: () => api.put(`/projects/${id}/`, { status: 'archived' }),
-      onSuccess: () => {
-        toast.success('Project archived');
-        navigate('/dashboard');
-      },
-      onError: () => toast.error('Failed to archive project')
+    const { data: rawLabels } = useQuery({
+      queryKey: ['projectLabels', id],
+      queryFn: async () => (await api.get(`/projects/${id}/labels/`)).data
     });
 
-    const deleteMutation = useMutation({
-      mutationFn: () => api.delete(`/projects/${id}/`),
+    // FIX: Data Normalization
+    const labels = useMemo(() => {
+      if (!rawLabels) return [];
+      if (Array.isArray(rawLabels)) return rawLabels;
+      return rawLabels.results || [];
+    }, [rawLabels]);
+
+    const createLabel = useMutation({
+      mutationFn: (name) => api.post(`/projects/${id}/labels/`, { name, color: '#3b82f6' }),
       onSuccess: () => {
-        toast.success('Project deleted');
-        navigate('/dashboard');
+        queryClient.invalidateQueries(['projectLabels', id]);
+        setNewLabel('');
+        toast.success('Label created');
+      }
+    });
+
+    const deleteLabel = useMutation({
+      mutationFn: (labelId) => api.delete(`/projects/${id}/labels/${labelId}/`),
+      onSuccess: () => {
+        queryClient.invalidateQueries(['projectLabels', id]);
+        toast.success('Label deleted');
       }
     });
 
     return (
-      <div className={styles.contentCard} style={{ borderColor: 'var(--danger-light)' }}>
-        <h2 className={styles.sectionTitle} style={{ color: 'var(--danger)' }}>Danger Zone</h2>
-        
-        <div className={styles.dangerBox}>
-          <h4 className={styles.dangerTitle}>Archive Project</h4>
-          <p className={styles.dangerDesc}>
-            Archiving removes this project from the active list but keeps data intact.
-          </p>
-          <Button 
-            variant="ghost" 
-            className="border border-gray-300"
-            onClick={() => {
-              if(confirm('Archive this project?')) archiveMutation.mutate();
-            }}
-            isLoading={archiveMutation.isPending}
-          >
-            Archive Project
-          </Button>
-        </div>
+      <div className={styles.contentCard}>
+         <h2 className={styles.sectionTitle}>Project Labels</h2>
+         <p className={styles.sectionDesc}>Categorize tasks with custom colored tags.</p>
 
-        <div className={styles.dangerBox} style={{ background: 'rgba(254, 226, 226, 0.4)' }}>
-          <h4 className={styles.dangerTitle}>Delete Project</h4>
-          <p className={styles.dangerDesc}>
-            Permanently remove this project and all associated tasks. This action cannot be undone.
-          </p>
-          
-          <input 
-            className={styles.confirmInput}
-            placeholder="Type 'DELETE' to confirm"
-            value={confirmText}
-            onChange={e => setConfirmText(e.target.value)}
-          />
-          
-          <Button 
-            className="bg-red-600 hover:bg-red-700 text-white border-none w-full"
-            disabled={confirmText !== 'DELETE' || deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-          >
-            Delete this project
-          </Button>
-        </div>
+         <div className={styles.addLabelRow}>
+            <div style={{ flex: 1 }}>
+              <Input 
+                 placeholder="New Label Name" 
+                 value={newLabel}
+                 onChange={(e) => setNewLabel(e.target.value)}
+              />
+            </div>
+            <Button onClick={() => createLabel.mutate(newLabel)} disabled={!newLabel.trim()}>
+               <Plus size={16} style={{ marginRight: '4px' }} /> Add
+            </Button>
+         </div>
+
+         <div className={styles.labelsContainer}>
+            {labels.map(label => (
+               <div key={label.id} className={styles.labelChip}>
+                  <div className={styles.labelColor} style={{ background: label.color }} />
+                  <span className={styles.labelName}>{label.name}</span>
+                  <button onClick={() => deleteLabel.mutate(label.id)} className={styles.deleteLabelBtn}>
+                     <X size={14} />
+                  </button>
+               </div>
+            ))}
+            {!labels.length && <p className={styles.emptyState}>No labels created yet.</p>}
+         </div>
       </div>
+    );
+  };
+
+  // --- TAB 4: DANGER ZONE ---
+  const DangerSettings = () => {
+    const [confirmText, setConfirmText] = useState('');
+    const [projectData] = useState(queryClient.getQueryData(['project', id]));
+
+    const archiveMutation = useMutation({
+        mutationFn: () => api.put(`/projects/${id}/`, { status: 'archived' }),
+        onSuccess: () => {
+            toast.success("Project archived");
+            navigate('/projects');
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: () => api.delete(`/projects/${id}/`),
+        onSuccess: () => {
+            toast.success("Project deleted");
+            navigate('/projects');
+        }
+    });
+
+    return (
+        <div className={styles.contentCard} style={{ borderColor: '#fca5a5' }}>
+            <h2 className={styles.sectionTitle} style={{ color: '#ef4444' }}>Danger Zone</h2>
+            
+            <div className={styles.dangerBox}>
+                <h4 className={styles.dangerTitle}>Archive Project</h4>
+                <p className={styles.dangerDesc}>Mark this project as archived. Read-only mode for all members.</p>
+                <Button variant="ghost" onClick={() => archiveMutation.mutate()}>Archive Project</Button>
+            </div>
+
+            <div className={styles.dangerBox} style={{ background: '#fef2f2', borderColor: '#fecaca' }}>
+                <h4 className={styles.dangerTitle}>Delete Project</h4>
+                <p className={styles.dangerDesc}>Irreversible action. Please type <strong>{projectData?.name}</strong> to confirm.</p>
+                
+                <input 
+                    className={styles.confirmInput}
+                    placeholder={`Type "${projectData?.name}"`}
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                />
+                <button 
+                    className={styles.deleteBtn}
+                    disabled={confirmText !== projectData?.name}
+                    onClick={() => deleteMutation.mutate()}
+                >
+                    Delete Permanently
+                </button>
+            </div>
+        </div>
     );
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.sidebar}>
-        <button 
-          className={`${styles.tabButton} ${activeTab === TABS.GENERAL ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab(TABS.GENERAL)}
-        >
+        <button className={`${styles.tabButton} ${activeTab === TABS.GENERAL ? styles.activeTab : ''}`} onClick={() => setActiveTab(TABS.GENERAL)}>
           <Settings size={18} /> General
         </button>
-        <button 
-          className={`${styles.tabButton} ${activeTab === TABS.MEMBERS ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab(TABS.MEMBERS)}
-        >
+        <button className={`${styles.tabButton} ${activeTab === TABS.MEMBERS ? styles.activeTab : ''}`} onClick={() => setActiveTab(TABS.MEMBERS)}>
           <Users size={18} /> Members
         </button>
-        <button 
-          className={`${styles.tabButton} ${activeTab === TABS.DANGER ? styles.activeTab : ''} ${styles.dangerTab}`}
-          onClick={() => setActiveTab(TABS.DANGER)}
-        >
+        <button className={`${styles.tabButton} ${activeTab === TABS.LABELS ? styles.activeTab : ''}`} onClick={() => setActiveTab(TABS.LABELS)}>
+          <Tag size={18} /> Labels
+        </button>
+        <button className={`${styles.tabButton} ${activeTab === TABS.DANGER ? styles.activeTab : ''} ${styles.dangerTab}`} onClick={() => setActiveTab(TABS.DANGER)}>
           <AlertTriangle size={18} /> Danger Zone
         </button>
       </div>
@@ -301,6 +333,7 @@ const ProjectSettings = () => {
       <div className={styles.content}>
         {activeTab === TABS.GENERAL && <GeneralSettings />}
         {activeTab === TABS.MEMBERS && <MembersSettings />}
+        {activeTab === TABS.LABELS && <LabelsSettings />}
         {activeTab === TABS.DANGER && <DangerSettings />}
       </div>
     </div>

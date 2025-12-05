@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Webhook, Plus, Trash2, Activity } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -11,10 +11,17 @@ const WebhookSettings = () => {
   const queryClient = useQueryClient();
   const [newUrl, setNewUrl] = useState('');
 
-  const { data: webhooks, isLoading } = useQuery({
+  const { data: rawData, isLoading } = useQuery({
     queryKey: ['webhooks'],
     queryFn: async () => (await api.get('/integrations/webhooks/')).data,
   });
+
+  const webhooks = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData.results && Array.isArray(rawData.results)) return rawData.results;
+    return [];
+  }, [rawData]);
 
   const createMutation = useMutation({
     mutationFn: (url) => api.post('/integrations/webhooks/', { 
@@ -63,7 +70,7 @@ const WebhookSettings = () => {
         <div>
           {isLoading ? (
             <div>Loading...</div>
-          ) : webhooks?.map((hook) => (
+          ) : webhooks.map((hook) => (
             <div key={hook.id} className={styles.webhookItem}>
               <div className={styles.hookInfo}>
                 <div className={styles.iconBox}>
@@ -86,7 +93,7 @@ const WebhookSettings = () => {
             </div>
           ))}
           
-          {!webhooks?.length && !isLoading && (
+          {!webhooks.length && !isLoading && (
             <div className={styles.emptyState}>
               No webhooks configured.
             </div>

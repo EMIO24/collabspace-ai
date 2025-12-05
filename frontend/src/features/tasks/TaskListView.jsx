@@ -1,17 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import Avatar from '../../components/ui/Avatar/Avatar';
 import Badge from '../../components/ui/Badge/Badge';
-// Ensure you have these enums defined, or fallback to defaults
 import { PRIORITY_MAP, STATUS_MAP } from '../../constants/enums'; 
 import styles from './TaskListView.module.css';
 
 const TaskListView = () => {
   const { id } = useParams();
 
-  const { data: tasks, isLoading } = useQuery({
+  const { data: rawData, isLoading } = useQuery({
     queryKey: ['tasks', id],
     queryFn: async () => {
       const res = await api.get(`/tasks/tasks/?project=${id}`);
@@ -19,6 +18,14 @@ const TaskListView = () => {
     },
     enabled: !!id
   });
+
+  // SAFETY CHECK: Normalize data
+  const tasks = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData.results && Array.isArray(rawData.results)) return rawData.results;
+    return [];
+  }, [rawData]);
 
   if (isLoading) return <div className="p-8 text-center text-gray-500">Loading tasks...</div>;
 
@@ -35,7 +42,7 @@ const TaskListView = () => {
           </tr>
         </thead>
         <tbody>
-          {tasks?.map(task => (
+          {tasks.map(task => (
             <tr key={task.id} className={styles.tr}>
               <td className={styles.td}>
                 <span className={styles.taskTitle}>{task.title}</span>
@@ -69,7 +76,7 @@ const TaskListView = () => {
               </td>
             </tr>
           ))}
-          {!tasks?.length && (
+          {!tasks.length && (
             <tr>
               <td colSpan="5" className={styles.emptyState}>
                 No tasks found in this project.

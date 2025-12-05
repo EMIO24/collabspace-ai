@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import FullCalendar from '@fullcalendar/react';
@@ -13,7 +13,8 @@ const ProjectCalendar = () => {
   const { id } = useParams();
   const [selectedTaskId, setSelectedTaskId] = useState(null);
 
-  const { data: tasks, isLoading } = useQuery({
+  // 1. Fetch Raw Data
+  const { data: rawData, isLoading } = useQuery({
     queryKey: ['tasks', id],
     queryFn: async () => {
       const res = await api.get(`/tasks/tasks/?project=${id}`);
@@ -22,13 +23,22 @@ const ProjectCalendar = () => {
     enabled: !!id
   });
 
-  const events = tasks?.map(task => ({
+  // 2. Normalize Data (Safety Check)
+  const tasks = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData.results && Array.isArray(rawData.results)) return rawData.results;
+    return [];
+  }, [rawData]);
+
+  // 3. Map normalized tasks to Calendar Events
+  const events = tasks.map(task => ({
     id: task.id,
     title: task.title,
     start: task.due_date || task.created_at, // Fallback if no due date
     className: `event-${task.priority || 'low'}`, // For CSS styling
     extendedProps: { ...task }
-  })) || [];
+  }));
 
   const handleEventClick = (info) => {
     setSelectedTaskId(info.event.id);

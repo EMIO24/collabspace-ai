@@ -1,20 +1,41 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MessageSquare, Paperclip, Clock, Send, Upload, File } from 'lucide-react';
+import { 
+  X, Star, MoreHorizontal, Trash2, Send, Play, Square, 
+  Copy, ArrowRight, Check
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { api } from '../../services/api';
 import Avatar from '../../components/ui/Avatar/Avatar';
 import Button from '../../components/ui/Button/Button';
 import styles from './TaskDetailSlideOver.module.css';
 
+const TABS = {
+  COMMENTS: 'Comments',
+  ATTACHMENTS: 'Attachments',
+  TIME: 'Time Tracking',
+  ACTIVITY: 'Activity'
+};
+
 const TaskDetailSlideOver = ({ taskId, onClose }) => {
   const queryClient = useQueryClient();
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef(null);
+  const [activeTab, setActiveTab] = useState(TABS.COMMENTS);
+  const [taskData, setTaskData] = useState(null);
+  const [commentText, setCommentText] = useState('');
+  
+  // Move Project State
+  const [isMoving, setIsMoving] = useState(false);
 
-  // --- FETCH TASK DETAILS ---
-  const { data: task, isLoading: isTaskLoading } = useQuery({
+  // Time Tracking State
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const timerRef = useRef(null);
+
+  const safeId = taskId ? String(taskId) : '';
+
+  // 1. Fetch Task
+  const { data: task } = useQuery({
     queryKey: ['task', taskId],
     queryFn: async () => {
       const res = await api.get(`/tasks/tasks/${taskId}/`);
@@ -23,99 +44,151 @@ const TaskDetailSlideOver = ({ taskId, onClose }) => {
     enabled: !!taskId
   });
 
-  // --- FETCH COMMENTS ---
-  const { data: comments } = useQuery({
-    queryKey: ['comments', taskId],
-    queryFn: async () => {
-      const res = await api.get(`/tasks/comments/?task=${taskId}`);
-      return res.data;
-    },
-    enabled: !!taskId
+  // 2. Fetch Comments
+  const { data: rawComments } = useQuery({
+    queryKey: ['taskComments', taskId],
+    queryFn: async () => (await api.get(`/tasks/comments/?task=${taskId}`)).data,
+    enabled: !!taskId && activeTab === TABS.COMMENTS
   });
+
+  // 3. Fetch Time Entries
+  const { data: rawTimeEntries } = useQuery({
+    queryKey: ['taskTime', taskId],
+    queryFn: async () => (await api.get(`/tasks/time-entries/?task=${taskId}`)).data,
+    enabled: !!taskId && activeTab === TABS.TIME
+  });
+
+  // 4. Fetch Projects (For Move Functionality)
+  const { data: projects } = useQuery({
+    queryKey: ['allProjects'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/projects/');
+        return Array.isArray(res.data) ? res.data : (res.data.results || []);
+      } catch { return []; }
+    },
+    enabled: isMoving // Only fetch when user clicks "Move"
+  });
+
+  const comments = useMemo(() => Array.isArray(rawComments) ? rawComments : (rawComments?.results || []), [rawComments]);
+  const timeEntries = useMemo(() => Array.isArray(rawTimeEntries) ? rawTimeEntries : (rawTimeEntries?.results || []), [rawTimeEntries]);
+
+  useEffect(() => {
+    if (task) setTaskData(task);
+  }, [task]);
 
   // --- MUTATIONS ---
-  
-  // 1. Update Task (Title/Desc) on Blur
-  const updateTaskMutation = useMutation({
-    mutationFn: (updates) => api.put(`/tasks/tasks/${taskId}/`, updates),
+  const updateMutation = useMutation({
+    mutationFn: (updates) => api.patch(`/tasks/tasks/${taskId}/`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries(['task', taskId]);
-      queryClient.invalidateQueries(['tasks']); // Update board
+      queryClient.invalidateQueries(['tasks']);
+      queryClient.invalidateQueries(['myTasks']); 
       toast.success('Saved');
-    }
+    },
+    onError: () => toast.error('Failed to update task')
   });
 
-  const handleBlur = (field, value) => {
-    if (task && task[field] !== value) {
-      updateTaskMutation.mutate({ [field]: value });
-    }
-  };
-
-  // 2. Post Comment
-  const [commentText, setCommentText] = useState('');
   const commentMutation = useMutation({
-    mutationFn: (text) => api.post('/tasks/comments/', { task: taskId, content: text }),
+    mutationFn: (content) => api.post('/tasks/comments/', { task: taskId, content }),
     onSuccess: () => {
-      queryClient.invalidateQueries(['comments', taskId]);
+      queryClient.invalidateQueries(['taskComments', taskId]);
       setCommentText('');
+      toast.success('Comment added');
     }
   });
 
-  // 3. Upload Attachment
-  const attachmentMutation = useMutation({
-    mutationFn: (formData) => {
-      // Assuming multipart/form-data request
-      return api.post('/tasks/attachments/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+  const duplicateMutation = useMutation({
+    mutationFn: () => {
+      // Strip ID and timestamps for the copy
+      const { id, created_at, updated_at, ...rest } = taskData;
+      return api.post('/tasks/tasks/', {
+        ...rest,
+        title: `Copy of ${rest.title}`,
+        status: 'todo',
+        project: rest.project
       });
     },
     onSuccess: () => {
-      toast.success('File uploaded');
-      // Refetch task or attachments depending on API structure
-      queryClient.invalidateQueries(['task', taskId]); 
-    }
+      toast.success('Task duplicated');
+      queryClient.invalidateQueries(['tasks']);
+      onClose();
+    },
+    onError: () => toast.error('Failed to duplicate task')
   });
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) handleUpload(file);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleUpload(file);
-  };
-
-  const handleUpload = (file) => {
-    const formData = new FormData();
-    formData.append('task', taskId);
-    formData.append('file', file);
-    attachmentMutation.mutate(formData);
-  };
-
-  // 4. Log Time
-  const [timeSpent, setTimeSpent] = useState('');
-  const timeLogMutation = useMutation({
-    mutationFn: (minutes) => api.post('/tasks/time-entries/', { task: taskId, duration: minutes }),
+  const moveProjectMutation = useMutation({
+    mutationFn: (projectId) => api.patch(`/tasks/tasks/${taskId}/`, { project: projectId }),
     onSuccess: () => {
-      toast.success('Time logged');
-      setTimeSpent('');
+      toast.success('Task moved to new project');
+      queryClient.invalidateQueries(['tasks']);
+      setIsMoving(false);
+      onClose();
+    },
+    onError: () => toast.error('Failed to move task')
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.delete(`/tasks/tasks/${taskId}/`),
+    onSuccess: () => {
+      toast.success('Task deleted');
+      onClose();
+      queryClient.invalidateQueries(['tasks']);
     }
   });
 
-  if (!taskId) return null;
+  const timeEntryMutation = useMutation({
+    mutationFn: (minutes) => api.post('/tasks/time-entries/', { 
+      task: taskId, 
+      duration: minutes, 
+      description: 'Timer Log' 
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['taskTime', taskId]);
+      toast.success('Time logged');
+    }
+  });
+
+  // --- HANDLERS ---
+  const handleFieldChange = (field, value) => {
+    setTaskData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBlur = (field) => {
+    if (taskData[field] !== task[field]) {
+      updateMutation.mutate({ [field]: taskData[field] });
+    }
+  };
+
+  // --- TIMER LOGIC ---
+  const toggleTimer = () => {
+    if (isTimerRunning) {
+      clearInterval(timerRef.current);
+      setIsTimerRunning(false);
+      if (timerSeconds > 60) {
+        timeEntryMutation.mutate(Math.ceil(timerSeconds / 60));
+      }
+      setTimerSeconds(0);
+    } else {
+      setIsTimerRunning(true);
+      timerRef.current = setInterval(() => {
+        setTimerSeconds(prev => prev + 1);
+      }, 1000);
+    }
+  };
+
+  const formatTimer = (totalSeconds) => {
+    const h = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  };
+
+  if (!taskId || !taskData) return null;
 
   return (
     <AnimatePresence>
-      <motion.div 
-        className={styles.backdrop}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      >
+      <div className={styles.backdrop} onClick={onClose}>
         <motion.div 
           className={styles.panel}
           initial={{ x: '100%' }}
@@ -126,141 +199,213 @@ const TaskDetailSlideOver = ({ taskId, onClose }) => {
         >
           {/* Header */}
           <div className={styles.header}>
-            <span className="text-sm font-semibold text-gray-500">TASK-{taskId.slice(0, 8)}</span>
-            <button className={styles.closeBtn} onClick={onClose}>
-              <X size={20} />
-            </button>
+            <div style={{display:'flex', alignItems:'center', gap:'1rem'}}>
+               <span className={styles.taskId}>TASK-{safeId.slice(0, 8)}</span>
+               <button className={styles.iconBtn} onClick={() => updateMutation.mutate({ is_favorite: !taskData.is_favorite })}>
+                  <Star size={18} className={taskData.is_favorite ? styles.starActive : ''} fill={taskData.is_favorite ? "currentColor" : "none"} />
+               </button>
+            </div>
+            <div className={styles.headerActions}>
+               <button className={styles.iconBtn}><MoreHorizontal size={18} /></button>
+               <button className={styles.iconBtn} onClick={onClose}><X size={20} /></button>
+            </div>
           </div>
 
-          {/* Content */}
-          {isTaskLoading ? (
-             <div className="flex items-center justify-center h-full">Loading...</div>
-          ) : (
-            <div className={styles.scrollArea}>
-              
-              {/* Editable Details */}
-              <div>
-                <input
+          <div className={styles.body}>
+            {/* Main Content (Left) */}
+            <div className={styles.mainContent}>
+               <input 
                   className={styles.titleInput}
-                  defaultValue={task.title}
-                  onBlur={(e) => handleBlur('title', e.target.value)}
+                  value={taskData.title || ''}
+                  onChange={(e) => handleFieldChange('title', e.target.value)}
+                  onBlur={() => handleBlur('title')}
                   placeholder="Task Title"
-                />
-                <textarea
-                  className={styles.descInput}
-                  defaultValue={task.description}
-                  onBlur={(e) => handleBlur('description', e.target.value)}
-                  placeholder="Add a description..."
-                />
-              </div>
+               />
+               
+               <textarea
+                  className={styles.descriptionArea}
+                  value={taskData.description || ''}
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
+                  onBlur={() => handleBlur('description')}
+                  placeholder="Add a detailed description..."
+               />
 
-              {/* Time Tracking */}
-              <div>
-                <h4 className={styles.sectionTitle}>
-                  <Clock size={16} /> Time Tracking
-                </h4>
-                <div className={styles.timeLogForm}>
-                  <input 
-                    type="number" 
-                    placeholder="Mins" 
-                    className={styles.timeInput}
-                    value={timeSpent}
-                    onChange={(e) => setTimeSpent(e.target.value)}
-                  />
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={() => timeLogMutation.mutate(timeSpent)}
-                    disabled={!timeSpent}
-                  >
-                    Log Time
-                  </Button>
-                </div>
-              </div>
-
-              {/* Attachments */}
-              <div>
-                <h4 className={styles.sectionTitle}>
-                  <Paperclip size={16} /> Attachments
-                </h4>
-                <div 
-                  className={`${styles.dropZone} ${isDragging ? styles.dropZoneActive : ''}`}
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload size={24} className="mx-auto mb-2 opacity-50" />
-                  <p>Click or drag file to upload</p>
-                  <input 
-                    type="file" 
-                    hidden 
-                    ref={fileInputRef} 
-                    onChange={handleFileSelect} 
-                  />
-                </div>
-                {/* Simple list of existing attachments (mocked based on logic) */}
-                {task.attachments && task.attachments.length > 0 && (
-                  <div className={styles.fileList}>
-                    {task.attachments.map((file) => (
-                      <div key={file.id} className={styles.fileItem}>
-                        <File size={16} className="text-blue-500" />
-                        <span className="flex-1 truncate">{file.name}</span>
-                        <a href={file.url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">Download</a>
-                      </div>
+               <div className={styles.tabsContainer}>
+                 <div className={styles.tabsList}>
+                    {Object.values(TABS).map(tab => (
+                      <button 
+                        key={tab} 
+                        className={`${styles.tab} ${activeTab === tab ? styles.activeTab : ''}`}
+                        onClick={() => setActiveTab(tab)}
+                      >
+                        {tab}
+                      </button>
                     ))}
-                  </div>
-                )}
-              </div>
+                 </div>
+               </div>
 
-              {/* Comments */}
-              <div>
-                <h4 className={styles.sectionTitle}>
-                  <MessageSquare size={16} /> Comments
-                </h4>
-                
-                <div className={styles.commentList}>
-                  {comments?.map((comment) => (
-                    <div key={comment.id} className={styles.comment}>
-                      <Avatar 
-                        src={comment.user.avatar} 
-                        fallback={comment.user.username[0]} 
-                        size="sm" 
+               {activeTab === TABS.COMMENTS && (
+                 <div className={styles.commentSection}>
+                   <div className={styles.commentInputWrapper}>
+                      <textarea 
+                        className={styles.commentInput} 
+                        placeholder="Write a comment..." 
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
                       />
-                      <div>
-                        <div className={styles.commentMeta}>
-                          {comment.user.username} • {new Date(comment.created_at).toLocaleString()}
-                        </div>
-                        <div className={styles.commentBody}>
-                          {comment.content}
-                        </div>
+                      <div className={styles.commentToolbar}>
+                         <Button size="sm" onClick={() => commentMutation.mutate(commentText)} disabled={!commentText}>
+                            <Send size={14} className="mr-2" /> Comment
+                         </Button>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                   </div>
+                   
+                   <div className={styles.commentList}>
+                      {comments.map((comment, i) => (
+                        <div key={comment.id || i} className={styles.comment}>
+                           <Avatar src={comment.user?.avatar} fallback={comment.user?.username?.[0] || 'U'} />
+                           <div className={styles.commentContent}>
+                              <div className={styles.commentHeader}>
+                                 <span className={styles.commentAuthor}>{comment.user?.username}</span>
+                                 <span className={styles.commentTime}>
+                                    {new Date(comment.created_at).toLocaleString()}
+                                 </span>
+                              </div>
+                              <div className={styles.commentText}>{comment.content}</div>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                 </div>
+               )}
 
-                <div className={styles.commentForm}>
-                  <input
-                    className={styles.commentInput}
-                    placeholder="Write a comment..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && commentMutation.mutate(commentText)}
-                  />
-                  <Button 
-                    size="sm" 
-                    onClick={() => commentMutation.mutate(commentText)}
-                    disabled={!commentText}
+               {activeTab === TABS.TIME && (
+                  <div>
+                     <div className={styles.timerWidget}>
+                        <div>
+                           <div className="text-xs font-bold text-blue-600 uppercase mb-1">Current Session</div>
+                           <div className={styles.timerDisplay}>{formatTimer(timerSeconds)}</div>
+                        </div>
+                        <div className={styles.timerControls}>
+                           {!isTimerRunning ? (
+                              <Button onClick={toggleTimer} className="bg-green-600 hover:bg-green-700">
+                                 <Play size={16} className="mr-2" /> Start Timer
+                              </Button>
+                           ) : (
+                              <Button onClick={toggleTimer} className="bg-red-500 hover:bg-red-600">
+                                 <Square size={16} className="mr-2" /> Stop
+                              </Button>
+                           )}
+                        </div>
+                     </div>
+                     <h4 className="font-bold text-gray-700 mb-4">Time Log</h4>
+                     <div className={styles.timeLogList}>
+                        {timeEntries.map((entry, i) => (
+                           <div key={i} className={styles.timeEntry}>
+                              <span className="text-sm font-semibold text-gray-800">Logged Time</span>
+                              <div className="font-mono font-bold text-gray-700">{entry.duration || entry.hours}h</div>
+                           </div>
+                        ))}
+                        {!timeEntries.length && <div className="text-gray-400 italic">No time logged yet.</div>}
+                     </div>
+                  </div>
+               )}
+               
+               {activeTab === TABS.ATTACHMENTS && <div className="text-gray-400 text-center p-8">Attachments functionality is handled in Project Files.</div>}
+               {activeTab === TABS.ACTIVITY && <div className="text-gray-400 text-center p-8">Activity log loading...</div>}
+            </div>
+
+            {/* Sidebar (Right) */}
+            <div className={styles.sidebar}>
+               <div className={styles.sidebarSection}>
+                  <label className={styles.propertyLabel}>Status</label>
+                  <select 
+                     className={styles.select}
+                     value={taskData.status || 'todo'}
+                     onChange={(e) => {
+                       handleFieldChange('status', e.target.value);
+                       updateMutation.mutate({ status: e.target.value });
+                     }}
                   >
-                    <Send size={16} />
-                  </Button>
-                </div>
-              </div>
+                     <option value="todo">To Do</option>
+                     <option value="in_progress">In Progress</option>
+                     <option value="review">Review</option>
+                     <option value="done">Done</option>
+                  </select>
+               </div>
+
+               <div className={styles.sidebarSection}>
+                  <label className={styles.propertyLabel}>Priority</label>
+                  <select 
+                     className={styles.select}
+                     value={taskData.priority || 'medium'}
+                     onChange={(e) => {
+                        handleFieldChange('priority', e.target.value);
+                        updateMutation.mutate({ priority: e.target.value });
+                     }}
+                  >
+                     <option value="low">Low</option>
+                     <option value="medium">Medium</option>
+                     <option value="high">High</option>
+                     <option value="urgent">Urgent</option>
+                  </select>
+               </div>
+
+               <div className={styles.sidebarSection}>
+                  <label className={styles.propertyLabel}>Due Date</label>
+                  <input 
+                     type="date" 
+                     className={styles.dateInput}
+                     value={taskData.due_date ? taskData.due_date.split('T')[0] : ''} 
+                     onChange={(e) => {
+                        handleFieldChange('due_date', e.target.value);
+                        updateMutation.mutate({ due_date: e.target.value });
+                     }}
+                  />
+               </div>
+
+               <div className={styles.sidebarFooter}>
+                  <button 
+                    className={styles.actionRowBtn} 
+                    onClick={() => duplicateMutation.mutate()}
+                    disabled={duplicateMutation.isPending}
+                  >
+                     <Copy size={16} /> {duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate Task'}
+                  </button>
+                  
+                  {!isMoving ? (
+                    <button className={styles.actionRowBtn} onClick={() => setIsMoving(true)}>
+                       <ArrowRight size={16} /> Move to Project
+                    </button>
+                  ) : (
+                    <div className="bg-white p-2 rounded border border-blue-200 shadow-sm">
+                       <p className="text-xs text-gray-500 mb-1 font-semibold">Select Project:</p>
+                       <select 
+                         className={styles.select} 
+                         onChange={(e) => { if(e.target.value) moveProjectMutation.mutate(e.target.value) }}
+                         defaultValue=""
+                       >
+                          <option value="" disabled>Choose...</option>
+                          {projects?.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                       </select>
+                       <button className="text-xs text-red-500 mt-1 hover:underline w-full text-left" onClick={() => setIsMoving(false)}>Cancel</button>
+                    </div>
+                  )}
+
+                  <button 
+                    className={`${styles.actionRowBtn} ${styles.deleteBtn}`} 
+                    onClick={() => { if(confirm('Delete this task?')) deleteMutation.mutate(); }}
+                  >
+                     <Trash2 size={16} /> Delete Task
+                  </button>
+               </div>
 
             </div>
-          )}
+          </div>
         </motion.div>
-      </motion.div>
+      </div>
     </AnimatePresence>
   );
 };

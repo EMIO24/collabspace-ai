@@ -1,54 +1,99 @@
 .card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   padding: 1rem;
   margin-bottom: 0.75rem;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   cursor: grab;
-  transition: transform 0.2s, box-shadow 0.2s;
-  touch-action: none; /* Critical for dnd-kit on mobile */
+  transition: box-shadow 0.2s, transform 0.2s;
   position: relative;
 }
 
 .card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-hover);
-  border-color: rgba(255, 255, 255, 0.9);
+  border-color: #cbd5e1;
 }
 
 .isDragging {
-  opacity: 0.5;
-  box-shadow: none;
-  border: 1px dashed var(--primary);
-  background: transparent;
+  opacity: 0.6;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+  transform: rotate(2deg);
+  z-index: 100;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.priorityDot {
+  width: 24px;
+  height: 6px;
+  border-radius: 3px;
+}
+
+.emptyCheck {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 4px;
 }
 
 .title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-main);
+  color: #1e293b;
   margin: 0 0 0.75rem 0;
   line-height: 1.4;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  text-transform: uppercase;
 }
 
 .footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.75rem;
 }
 
-.priority {
-  font-size: 0.7rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  text-transform: uppercase;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+.metaLeft {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
-.priority_high { background: #fee2e2; color: #ef4444; }
-.priority_medium { background: #fef3c7; color: #f59e0b; }
-.priority_low { background: #dbeafe; color: #3b82f6; }
+.metaItem {
+  font-size: 0.75rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.counts {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.overdue {
+  color: #ef4444;
+  font-weight: 600;
+}

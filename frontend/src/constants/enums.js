@@ -9,5 +9,5 @@ export const STATUS_MAP = {
   todo: { label: 'To Do', color: 'gray' },
   in_progress: { label: 'In Progress', color: 'info' },
   review: { label: 'Review', color: 'warning' },
-  completed: { label: 'Completed', color: 'success' }
+  done: { label: 'Done', color: 'success' } // Changed 'completed' to 'done'
 };

@@ -1,15 +1,169 @@
-.boardContainer {
+.container {
   display: flex;
-  overflow-x: auto;
-  height: calc(100vh - 120px); /* Adjust for header/topbar */
-  gap: 1.5rem;
-  padding: 1rem 0.5rem;
-  align-items: flex-start;
-  width: 100%;
+  flex-direction: column;
+  /* Set a fixed height relative to viewport so internal scroll works */
+  height: calc(100vh - 240px); 
+  min-height: 500px; /* Minimum height for safety */
+  background: #f8fafc;
+  overflow: hidden; /* Contain the board */
 }
 
-.controls {
+/* --- Toolbar & Filters --- */
+.toolbar {
+  padding: 1rem 0;
+  background: transparent; /* Blends with page */
+  border-bottom: none;
   display: flex;
-  justify-content: flex-end;
-  padding: 0 0.5rem 1rem 0;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+  margin-bottom: 1rem;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filterLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-right: 0.5rem;
+}
+
+.filterBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterBtn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.activeFilter {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+
+.search {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  width: 200px;
+  outline: none;
+}
+
+.search:focus {
+  border-color: #3b82f6;
+}
+
+/* Board Actions */
+.boardActions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.actionBtn {
+  background: #1e293b;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: background 0.2s;
+}
+
+.actionBtn:hover {
+  background: #0f172a;
+}
+
+.secondaryBtn {
+  background: white;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
+}
+
+.secondaryBtn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+/* --- Board Layout (Scroll Fixes) --- */
+.boardContainer {
+  display: flex;
+  overflow-x: auto; /* Enable horizontal scroll */
+  overflow-y: hidden; /* Columns handle vertical scroll */
+  height: 100%;
+  flex: 1; 
+  padding-bottom: 1rem; /* Space for scrollbar */
+  gap: 1.5rem;
+  align-items: flex-start;
+  
+  /* Custom Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.boardContainer::-webkit-scrollbar {
+  height: 8px;
+  background: transparent;
+}
+
+.boardContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.boardContainer::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+.boardContainer::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+
+/* New Column Placeholder */
+.newColumnBtn {
+  min-width: 300px;
+  height: 60px;
+  border: 2px dashed #e2e8f0;
+  border-radius: 1rem; /* rounded-2xl */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8; /* text-slate-400 */
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  flex-shrink: 0;
+}
+
+.newColumnBtn:hover {
+  border-color: #60a5fa; /* hover:border-blue-400 */
+  color: #3b82f6; /* hover:text-blue-500 */
 }

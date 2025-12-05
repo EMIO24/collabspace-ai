@@ -1,0 +1,314 @@
+/* --- Shared Card Style --- */
+.glassCard {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+  height: 100%;
+}
+
+/* --- Overview Tab --- */
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .grid3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.colSpan2 {
+  grid-column: span 2;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.statLabel {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+  margin-top: 0;
+}
+
+.statValue {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.iconBox {
+  padding: 0.5rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blueIcon { background-color: #dbeafe; color: #2563eb; }
+.purpleIcon { background-color: #f3e8ff; color: #9333ea; }
+.greenIcon { background-color: #dcfce7; color: #16a34a; }
+
+.trend {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  color: #16a34a;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+/* Activity List */
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.activityItem {
+  display: flex;
+  gap: 1rem;
+}
+
+.timelineLine {
+  width: 1px;
+  background-color: #d1d5db;
+  position: relative;
+  margin-left: 0.5rem;
+}
+
+.timelineDot {
+  position: absolute;
+  top: 0;
+  left: -0.25rem; /* Center on line */
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  border: 3px solid #eff6ff; /* Ring effect */
+  box-sizing: content-box;
+}
+
+.activityContent {
+  padding-bottom: 0.5rem;
+}
+
+.activityText {
+  font-size: 0.875rem;
+  color: #1f2937;
+  margin: 0;
+}
+
+.activityUser {
+  font-weight: 600;
+}
+
+.activityTime {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  display: block;
+}
+
+/* --- Members Tab --- */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.table td {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+  vertical-align: middle;
+}
+
+.userWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.userName {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.userEmail {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.roleSelect {
+  background-color: transparent;
+  border: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  outline: none;
+}
+
+.deleteIconBtn {
+  color: #9ca3af;
+  transition: color 0.2s;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.deleteIconBtn:hover {
+  color: #ef4444;
+}
+
+/* --- Invites Tab --- */
+.inviteGrid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1.5rem;
+}
+
+.formLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.formInput {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+  outline: none;
+  font-size: 0.9rem;
+}
+
+.formInput:focus {
+  border-color: var(--primary);
+}
+
+.formSelect {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+  background-color: white;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.fullBtn {
+  width: 100%;
+}
+
+/* --- Settings Tab --- */
+.settingsContainer {
+  max-width: 42rem;
+}
+
+.settingsForm {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.settingsInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.8);
+  font-size: 0.9rem;
+}
+
+.actionsRight {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dangerZone {
+  margin-top: 2rem;
+  border: 1px solid var(--danger);
+  background: rgba(254, 226, 226, 0.2);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.dangerTitle {
+  color: #dc2626;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.dangerDesc {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin-bottom: 1rem;
+}
+
+.dangerActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.confirmInput {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.25rem;
+  outline: none;
+}
+
+.deleteBtn {
+  background-color: #dc2626;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.deleteBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

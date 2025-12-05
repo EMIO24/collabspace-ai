@@ -10,25 +10,35 @@ export const WorkspaceProvider = ({ children }) => {
   const [currentWorkspace, setCurrentWorkspace] = useState(null);
 
   // Fetch workspaces list
-  const { data: workspaces, isLoading, refetch } = useQuery({
+  const { data: rawData, isLoading, refetch } = useQuery({
     queryKey: ['workspaces'],
     queryFn: async () => {
       const res = await api.get('/workspaces/');
       return res.data;
-    },
-    onSuccess: (data) => {
-      // Auto-select first workspace if none selected
-      if (!currentWorkspace && data && data.length > 0) {
-        setCurrentWorkspace(data[0]);
-      }
     }
   });
+
+  // SAFETY CHECK: Normalize data to ensure it is always an array
+  // Handles cases where API returns { results: [...] } (Pagination) or just [...]
+  const workspaces = React.useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData.results && Array.isArray(rawData.results)) return rawData.results;
+    return [];
+  }, [rawData]);
+
+  // Effect to auto-select the first workspace when data loads
+  useEffect(() => {
+    if (!currentWorkspace && workspaces.length > 0) {
+      setCurrentWorkspace(workspaces[0]);
+    }
+  }, [workspaces, currentWorkspace]);
 
   return (
     <WorkspaceContext.Provider value={{ 
       currentWorkspace, 
       setCurrentWorkspace, 
-      workspaces: workspaces || [],
+      workspaces, 
       isLoading,
       refetchWorkspaces: refetch
     }}>

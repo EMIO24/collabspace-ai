@@ -1,10 +1,11 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Plus } from 'lucide-react';
 import TaskCard from './TaskCard';
 import styles from './KanbanColumn.module.css';
 
-const KanbanColumn = ({ id, title, tasks }) => {
+const KanbanColumn = ({ id, title, tasks, onTaskClick, onAddTask }) => {
   const { setNodeRef } = useDroppable({ id });
 
   return (
@@ -15,6 +16,11 @@ const KanbanColumn = ({ id, title, tasks }) => {
           <span className={styles.count}>{tasks.length}</span>
         </h3>
       </div>
+
+      {/* Inline Add Button */}
+      <button className={styles.addBtn} onClick={() => onAddTask(id)}>
+        <Plus size={14} /> Add Task
+      </button>
       
       <div ref={setNodeRef} className={styles.taskList}>
         <SortableContext 
@@ -23,7 +29,11 @@ const KanbanColumn = ({ id, title, tasks }) => {
           strategy={verticalListSortingStrategy}
         >
           {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard 
+                key={task.id} 
+                task={task} 
+                onClick={() => onTaskClick(task.id)} 
+            />
           ))}
         </SortableContext>
       </div>

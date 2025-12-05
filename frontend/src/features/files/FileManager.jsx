@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Folder, FileText, Image as ImageIcon, Film, 
-  MoreVertical, Download, Share2, Trash2, Home, ChevronRight 
+  MoreVertical, Home, ChevronRight 
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { api } from '../../services/api';
@@ -20,17 +20,23 @@ const FileManager = () => {
   const [currentPath, setCurrentPath] = useState([{ id: 'root', name: 'Home' }]);
   const queryClient = useQueryClient();
 
-  // 1. Fetch Files
-  const { data: files, isLoading } = useQuery({
+  // 1. Fetch Raw Data
+  const { data: rawData, isLoading } = useQuery({
     queryKey: ['files', activeCategory],
     queryFn: async () => {
-      // In a real app, you'd pass category/folder_id as params
       const res = await api.get('/files/');
       return res.data;
     }
   });
 
-  // 2. Delete Mutation
+  // 2. Normalize Data
+  const files = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (rawData.results && Array.isArray(rawData.results)) return rawData.results;
+    return [];
+  }, [rawData]);
+
   const deleteMutation = useMutation({
     mutationFn: (id) => api.delete(`/files/${id}/`),
     onSuccess: () => {
@@ -39,10 +45,8 @@ const FileManager = () => {
     }
   });
 
-  // Mock folder navigation handler
   const handleFolderClick = (folderName) => {
     setCurrentPath([...currentPath, { id: 'mock-id', name: folderName }]);
-    // Trigger fetch for new folder ID here
   };
 
   const navigateUp = (index) => {
@@ -58,7 +62,6 @@ const FileManager = () => {
 
   return (
     <div className={styles.container}>
-      {/* Sidebar */}
       <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>My Drive</div>
         <nav>
@@ -86,9 +89,7 @@ const FileManager = () => {
         </div>
       </div>
 
-      {/* Main Area */}
       <div className={styles.main}>
-        {/* Breadcrumbs */}
         <div className={styles.toolbar}>
           <div className={styles.breadcrumbs}>
             {currentPath.map((crumb, index) => (
@@ -105,27 +106,17 @@ const FileManager = () => {
           </div>
         </div>
 
-        {/* Grid */}
         <div className={styles.grid}>
           {isLoading ? (
             <div>Loading files...</div>
           ) : (
             <>
-              {/* Mock Folders */}
-              <div className={styles.fileCard} onClick={() => handleFolderClick('Projects')}>
-                <div className={styles.preview}>
-                  <Folder size={48} className={styles.iconFolder} />
-                </div>
-                <div className={styles.fileName}>Projects</div>
-                <div className={styles.fileMeta}>12 items</div>
-              </div>
-
               {/* Files */}
-              {files?.map((file) => (
+              {files.map((file) => (
                 <div key={file.id} className={styles.fileCard}>
                   <button className={styles.contextBtn} onClick={(e) => {
                     e.stopPropagation();
-                    // Open context menu logic here
+                    if(confirm('Delete file?')) deleteMutation.mutate(file.id);
                   }}>
                     <MoreVertical size={16} />
                   </button>
@@ -142,6 +133,10 @@ const FileManager = () => {
                   </div>
                 </div>
               ))}
+              
+              {!files.length && (
+                <div className="text-gray-400 col-span-full text-center py-8">No files found.</div>
+              )}
             </>
           )}
         </div>

@@ -1,0 +1,160 @@
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 2rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+}
+
+/* Filter Toolbar */
+.toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  background: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.select {
+  padding: 0.5rem 2rem 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  font-size: 0.9rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+  min-width: 140px;
+}
+
+.select:hover {
+  border-color: #3b82f6;
+  background: white;
+}
+
+/* Calendar Wrapper */
+.calendarWrapper {
+  flex: 1;
+  background: white;
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05);
+  border: 1px solid #f1f5f9;
+  overflow: hidden;
+  min-height: 600px;
+}
+
+/* --- FullCalendar Overrides (Global scope within module) --- */
+:global(.fc) {
+  font-family: inherit;
+  --fc-border-color: #e5e7eb;
+  --fc-button-bg-color: white;
+  --fc-button-border-color: #e5e7eb;
+  --fc-button-text-color: #475569;
+  --fc-button-hover-bg-color: #f8fafc;
+  --fc-button-hover-border-color: #cbd5e1;
+  --fc-button-active-bg-color: #eff6ff;
+  --fc-button-active-border-color: #3b82f6;
+  --fc-button-active-text-color: #2563eb;
+  --fc-today-bg-color: rgba(239, 246, 255, 0.3) !important;
+}
+
+:global(.fc-toolbar-title) {
+  font-size: 1.25rem !important;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+:global(.fc-button) {
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  padding: 0.4rem 0.8rem !important;
+  text-transform: capitalize;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+:global(.fc-button-primary:not(:disabled):active), 
+:global(.fc-button-primary:not(:disabled).fc-button-active) {
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+}
+
+:global(.fc-col-header-cell) {
+  padding: 0.75rem 0;
+  background: #f9fafb;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+:global(.fc-daygrid-day-number) {
+  color: #334155;
+  font-weight: 500;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Events */
+:global(.fc-event) {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 2px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: transform 0.1s;
+  margin-bottom: 2px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+:global(.fc-event:hover) {
+  transform: scale(1.02);
+  z-index: 10;
+}
+
+/* Priority Colors */
+:global(.event-low) {
+  background-color: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  color: #1e40af;
+}
+
+:global(.event-medium) {
+  background-color: #fff7ed;
+  border-left: 3px solid #f97316;
+  color: #9a3412;
+}
+
+:global(.event-high) {
+  background-color: #fef2f2;
+  border-left: 3px solid #ef4444;
+  color: #991b1b;
+}
+
+:global(.event-urgent) {
+  background-color: #faf5ff;
+  border-left: 3px solid #a855f7;
+  color: #6b21a8;
+}
