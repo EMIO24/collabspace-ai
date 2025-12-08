@@ -49,7 +49,7 @@ const WorkspaceSettings = () => {
       mutationFn: () => api.delete(`/workspaces/${id}/`),
       onSuccess: () => {
         toast.success('Workspace deleted');
-        navigate('/');
+        navigate('/workspaces');
       }
     });
 
@@ -113,7 +113,14 @@ const WorkspaceSettings = () => {
   const MemberSettings = () => {
     const { data: members, isLoading } = useQuery({
       queryKey: ['workspaceMembers', id],
-      queryFn: async () => (await api.get(`/workspaces/${id}/members/`)).data,
+      queryFn: async () => {
+        try {
+          const res = await api.get(`/workspaces/${id}/members/`);
+          return Array.isArray(res.data) ? res.data : (res.data.results || []);
+        } catch {
+          return [];
+        }
+      },
     });
 
     const removeMutation = useMutation({
@@ -148,9 +155,16 @@ const WorkspaceSettings = () => {
               <tr key={member.id}>
                 <td>
                   <div className={styles.userCell}>
-                    <Avatar src={member.avatar} fallback={member.username[0]} size="sm" />
+                    {/* FIX: Safe access to username index */}
+                    <Avatar 
+                      src={member.avatar} 
+                      fallback={member.username?.[0] || 'U'} 
+                      size="sm" 
+                    />
                     <div className={styles.userInfo}>
-                      <span className={styles.userName}>{member.first_name} {member.last_name}</span>
+                      <span className={styles.userName}>
+                        {member.first_name ? `${member.first_name} ${member.last_name}` : (member.username || 'User')}
+                      </span>
                       <span className={styles.userEmail}>{member.email}</span>
                     </div>
                   </div>
@@ -169,6 +183,7 @@ const WorkspaceSettings = () => {
                 </td>
               </tr>
             ))}
+            {!members?.length && <tr><td colSpan="4" className="text-center p-4 text-gray-500">No members found.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -181,7 +196,14 @@ const WorkspaceSettings = () => {
 
     const { data: invitations, isLoading } = useQuery({
       queryKey: ['workspaceInvites', id],
-      queryFn: async () => (await api.get(`/workspaces/${id}/invitations/`)).data,
+      queryFn: async () => {
+        try {
+          const res = await api.get(`/workspaces/${id}/invitations/`);
+          return Array.isArray(res.data) ? res.data : (res.data.results || []);
+        } catch {
+          return [];
+        }
+      }
     });
 
     const sendInviteMutation = useMutation({
@@ -278,6 +300,7 @@ const WorkspaceSettings = () => {
     );
   };
 
+  // --- MAIN LAYOUT ---
   return (
     <div className={styles.container}>
       <div className={styles.sidebar}>

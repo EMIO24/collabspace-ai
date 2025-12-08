@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Activity, Settings, MessageSquare, Puzzle, 
   PieChart, Search, Bell, Menu, ListTodo, Bot, FolderOpen,
-  Briefcase, Plus, LogOut, User, LayoutGrid
+  Briefcase, Plus, LogOut, User, LayoutGrid, Sparkles
 } from 'lucide-react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import Avatar from '../components/ui/Avatar/Avatar';
@@ -17,20 +17,21 @@ import styles from './DashboardLayout.module.css';
 import { api } from '../services/api';
 import { toast } from 'react-hot-toast';
 
-// --- Helper Component for Tooltip Logic ---
-const NavItem = ({ to, icon: Icon, label, onHover, onLeave }) => {
+// Helper component for tooltip logic
+const NavItem = ({ to, icon: Icon, label, onHover, onLeave, end }) => {
   return (
     <NavLink 
       to={to}
+      end={end}
       className={({ isActive }) => `${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
       onMouseEnter={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        onHover(label, rect.top + (rect.height / 2)); // Pass label and center Y position
+        // Calculate vertical center of the icon
+        onHover(label, rect.top + (rect.height / 2)); 
       }}
       onMouseLeave={onLeave}
     >
       <Icon size={24} />
-      {/* We don't render the span inside here anymore to avoid clipping */}
     </NavLink>
   );
 };
@@ -54,31 +55,31 @@ const Sidebar = () => {
       </div>
 
       <nav className={styles.navScroll}>
+        <div className={styles.sectionHeader}>Overview</div>
+        
         <NavItem to="/dashboard" icon={LayoutDashboard} label="Home" onHover={handleHover} onLeave={handleLeave} />
         <NavItem to="/tasks" icon={ListTodo} label="My Tasks" onHover={handleHover} onLeave={handleLeave} />
-        <NavItem to="/meetings" icon={Bot} label="Meeting AI" onHover={handleHover} onLeave={handleLeave} />
         
-        <div className={styles.divider} />
+        <div className={styles.sectionHeader}>Intelligence</div>
 
-        <NavLink to="/workspaces" className={({ isActive }) => `${styles.navItem} ${isActive ? styles.navItemActive : ''}`}
-           onMouseEnter={(e) => handleHover('Workspaces', e.currentTarget.getBoundingClientRect().top + 28)}
-           onMouseLeave={handleLeave}
-        >
-           <LayoutGrid size={24} />
-        </NavLink>
+        <NavItem to="/ai" icon={Sparkles} label="AI Hub" onHover={handleHover} onLeave={handleLeave} />
+        <NavItem to="/meetings" icon={Bot} label="Meeting AI" onHover={handleHover} onLeave={handleLeave} />
+        <NavItem to="/analytics" icon={PieChart} label="Analytics" onHover={handleHover} onLeave={handleLeave} />
+
+        <div className={styles.sectionHeader}>Workspace</div>
         
+        <NavItem to="/workspaces" icon={LayoutGrid} label="Workspaces" onHover={handleHover} onLeave={handleLeave} />
         <NavItem to="/projects" icon={Activity} label="Projects" onHover={handleHover} onLeave={handleLeave} />
         <NavItem to="/files" icon={FolderOpen} label="Files" onHover={handleHover} onLeave={handleLeave} />
         <NavItem to="/chat" icon={MessageSquare} label="Messaging" onHover={handleHover} onLeave={handleLeave} />
-        <NavItem to="/analytics" icon={PieChart} label="Analytics" onHover={handleHover} onLeave={handleLeave} />
 
         {currentWorkspace && (
           <NavItem 
-             to={`/workspaces/${currentWorkspace.id}/settings`} 
-             icon={Briefcase} 
-             label="Team Settings" 
-             onHover={handleHover} 
-             onLeave={handleLeave} 
+            to={`/workspaces/${currentWorkspace.id}/settings`} 
+            icon={Briefcase} 
+            label="Team Settings" 
+            onHover={handleHover} 
+            onLeave={handleLeave} 
           />
         )}
         
@@ -94,7 +95,7 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* Floating Tooltip Rendered Outside Scroll Container */}
+      {/* Floating Tooltip Portal */}
       <div 
         className={`${styles.floatingTooltip} ${tooltip.show ? styles.tooltipVisible : ''}`}
         style={{ top: tooltip.top }}

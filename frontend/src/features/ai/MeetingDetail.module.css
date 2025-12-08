@@ -1,0 +1,287 @@
+.container {
+  display: flex;
+  height: calc(100vh - 64px); /* Full height minus topbar */
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+/* --- LEFT: EDITOR (60%) --- */
+.editorPanel {
+  flex: 6;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e2e8f0;
+  background: white;
+  overflow-y: auto;
+}
+
+.editorHeader {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.meetingTitle {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1e293b;
+  border: none;
+  width: 100%;
+  outline: none;
+}
+
+.metaRow {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Participants */
+.participants {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.participantAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Editor Toolbar */
+.toolbar {
+  padding: 0.75rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  gap: 0.5rem;
+  background: #f8fafc;
+}
+
+.toolBtn {
+  padding: 0.4rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.toolBtn:hover {
+  background: white;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+/* Text Area */
+.editorArea {
+  flex: 1;
+  padding: 2rem;
+  border: none;
+  resize: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #334155;
+  outline: none;
+}
+
+/* Agenda / Checklist */
+.agendaSection {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.sectionTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.agendaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+/* --- RIGHT: AI INSIGHTS (40%) --- */
+.insightsPanel {
+  flex: 4;
+  background: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-left: 1px solid white;
+}
+
+/* AI Actions Header */
+.aiHeader {
+  padding: 1.5rem;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.aiBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.btnPurple {
+  background: #f3e8ff;
+  color: #7c3aed;
+  border-color: #d8b4fe;
+}
+.btnPurple:hover { background: #e9d5ff; }
+
+.btnBlue {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+.btnBlue:hover { background: #dbeafe; }
+
+/* Cards */
+.insightCard {
+  background: white;
+  margin: 1.5rem;
+  margin-bottom: 0;
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+}
+
+.insightHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+/* Summary Content */
+.summaryText ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  color: #475569;
+}
+
+.summaryText li {
+  margin-bottom: 0.5rem;
+}
+
+/* Action Items */
+.actionItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  background: #f8fafc;
+}
+
+.actionContent {
+  flex: 1;
+}
+
+.actionText {
+  font-size: 0.9rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.actionMeta {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.convertBtn {
+  font-size: 0.75rem;
+  color: #2563eb;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0;
+}
+
+.convertBtn:hover { text-decoration: underline; }
+
+/* Sentiment */
+.sentimentGauge {
+  height: 8px;
+  width: 100%;
+  background: #f1f5f9;
+  border-radius: 99px;
+  overflow: hidden;
+  display: flex;
+  margin: 1rem 0;
+}
+
+.gaugePos { background: #10b981; }
+.gaugeNeu { background: #94a3b8; }
+.gaugeNeg { background: #ef4444; }
+
+.sentimentLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* Engagement Chart (Simple Bars) */
+.engagementRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.engageBar {
+  flex: 1;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.engageFill {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 3px;
+}

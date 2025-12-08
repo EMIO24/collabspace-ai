@@ -15,11 +15,13 @@ const ProjectOverview = () => {
   const [isAddingLabel, setIsAddingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   
+  // 1. Fetch Project
   const { data: project } = useQuery({
     queryKey: ['project', id],
     queryFn: async () => (await api.get(`/projects/${id}/`)).data
   });
 
+  // 2. Fetch Labels (Data Normalization Fix)
   const { data: rawLabels } = useQuery({
     queryKey: ['projectLabels', id],
     queryFn: async () => (await api.get(`/projects/${id}/labels/`)).data || []
@@ -28,9 +30,11 @@ const ProjectOverview = () => {
   const labels = useMemo(() => {
     if (!rawLabels) return [];
     if (Array.isArray(rawLabels)) return rawLabels;
-    return rawLabels.results || [];
+    if (rawLabels.results && Array.isArray(rawLabels.results)) return rawLabels.results;
+    return [];
   }, [rawLabels]);
 
+  // 3. Fetch Members (Data Normalization Fix)
   const { data: rawMembers } = useQuery({
     queryKey: ['projectMembers', id],
     queryFn: async () => (await api.get(`/projects/${id}/members/`)).data
@@ -39,10 +43,11 @@ const ProjectOverview = () => {
   const members = useMemo(() => {
     if (!rawMembers) return [];
     if (Array.isArray(rawMembers)) return rawMembers;
-    return rawMembers.results || [];
+    if (rawMembers.results && Array.isArray(rawMembers.results)) return rawMembers.results;
+    return [];
   }, [rawMembers]);
 
-  // ... (Mutations remain the same)
+  // --- MUTATIONS ---
   const updateMutation = useMutation({
     mutationFn: (data) => api.put(`/projects/${id}/`, data),
     onSuccess: () => queryClient.invalidateQueries(['project', id])
@@ -72,6 +77,7 @@ const ProjectOverview = () => {
   };
 
   if (!project) return <div>Loading...</div>;
+  const stats = project?.statistics || {};
 
   return (
     <div className={styles.container}>
@@ -83,7 +89,7 @@ const ProjectOverview = () => {
             className={styles.descriptionEditor}
             defaultValue={project.description}
             onBlur={(e) => updateMutation.mutate({ description: e.target.value })}
-            placeholder="Add project description..."
+            placeholder="Add project description (Markdown supported)..."
           />
         </div>
 
@@ -94,27 +100,51 @@ const ProjectOverview = () => {
 
         <div className={styles.card}>
            <h3 className={styles.sectionTitle}>Team</h3>
-           <div style={{ display:'flex', flexDirection:'column', gap:'0.75rem' }}>
+           <div className="flex flex-col gap-3">
              {members.map(member => (
-               <div key={member.id} style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+               <div key={member.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
                  <Avatar 
                     src={member.avatar} 
-                    fallback={member.username?.[0] || 'U'} // SAFE ACCESS
+                    /* FIX: Safe access to username string to prevent crash */
+                    fallback={(member.username && member.username.length > 0) ? member.username[0].toUpperCase() : 'U'} 
                     size="sm" 
                  />
                  <div>
-                   <div style={{fontWeight:600, fontSize:'0.9rem'}}>{member.first_name} {member.last_name}</div>
-                   <div style={{fontSize:'0.75rem', color:'#6b7280'}}>{member.role || 'Member'}</div>
+                   <div className="font-medium text-gray-800">{member.first_name} {member.last_name}</div>
+                   <div className="text-xs text-gray-500">{member.role || 'Member'}</div>
                  </div>
                </div>
              ))}
-             {!members.length && <div style={{color:'#9ca3af', fontSize:'0.9rem', fontStyle:'italic'}}>No members assigned.</div>}
+             {!members.length && <div className="text-gray-400 text-sm italic">No members assigned.</div>}
            </div>
         </div>
       </div>
 
       {/* Right Column */}
       <div>
+        {/* Quick Stats extracted from Project JSON */}
+        <div className={styles.card}>
+           <h3 className={styles.sectionTitle}>Stats</h3>
+           <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-blue-50 rounded-lg">
+                 <div className="text-xs text-gray-500 font-bold uppercase">Total Tasks</div>
+                 <div className="text-2xl font-bold text-blue-600">{stats.total_tasks || 0}</div>
+              </div>
+              <div className="p-3 bg-green-50 rounded-lg">
+                 <div className="text-xs text-gray-500 font-bold uppercase">Completed</div>
+                 <div className="text-2xl font-bold text-green-600">{stats.completed_tasks || 0}</div>
+              </div>
+              <div className="p-3 bg-orange-50 rounded-lg">
+                 <div className="text-xs text-gray-500 font-bold uppercase">Pending</div>
+                 <div className="text-2xl font-bold text-orange-600">{stats.pending_tasks || 0}</div>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-lg">
+                 <div className="text-xs text-gray-500 font-bold uppercase">Members</div>
+                 <div className="text-2xl font-bold text-purple-600">{stats.total_members || 1}</div>
+              </div>
+           </div>
+        </div>
+
         <div className={styles.card}>
           <h3 className={styles.sectionTitle}>Key Dates</h3>
           <div className={styles.datesGrid}>
@@ -158,10 +188,10 @@ const ProjectOverview = () => {
                 <Plus size={14} /> Add Label
               </button>
             ) : (
-              <form onSubmit={handleLabelSubmit} style={{ display:'flex', alignItems:'center', gap:'0.25rem' }}>
+              <form onSubmit={handleLabelSubmit} className="flex items-center gap-1">
                 <input 
                   autoFocus
-                  className="text-sm border rounded px-2 py-1 w-24 outline-none"
+                  className="text-sm border rounded px-2 py-1 w-24 outline-none focus:border-blue-500"
                   placeholder="Name"
                   value={newLabelName}
                   onChange={(e) => setNewLabelName(e.target.value)}
