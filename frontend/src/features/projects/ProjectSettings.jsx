@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Users, AlertTriangle, Save, Tag, Plus, X, Trash2 } from 'lucide-react';
+import { Settings, Users, AlertTriangle, Save, Tag, Plus, X, Trash2, Edit2, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { api } from '../../services/api';
 import Input from '../../components/ui/Input/Input';
@@ -16,6 +16,17 @@ const TABS = {
   LABELS: 'labels',
   DANGER: 'danger'
 };
+
+const PRESET_COLORS = [
+  '#ef4444', // Red
+  '#f97316', // Orange
+  '#f59e0b', // Amber
+  '#22c55e', // Green
+  '#14b8a6', // Teal
+  '#3b82f6', // Blue
+  '#6366f1', // Indigo
+  '#a855f7'  // Purple
+];
 
 const ProjectSettings = () => {
   const { id } = useParams();
@@ -100,7 +111,7 @@ const ProjectSettings = () => {
   };
 
   // --- TAB 2: MEMBERS ---
-  const MembersSettings = () => {
+  const MemberSettings = () => {
     const [emailToAdd, setEmailToAdd] = useState('');
     
     const { data: rawMembers } = useQuery({
@@ -108,7 +119,6 @@ const ProjectSettings = () => {
       queryFn: async () => (await api.get(`/projects/${id}/members/`)).data
     });
 
-    // FIX: Data Normalization
     const members = useMemo(() => {
       if (!rawMembers) return [];
       if (Array.isArray(rawMembers)) return rawMembers;
@@ -135,15 +145,14 @@ const ProjectSettings = () => {
 
     return (
         <div className={styles.contentCard}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 className={styles.sectionTitle} style={{margin:0, border:'none'}}>Team Members</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h2 className={styles.sectionTitle} style={{margin:0}}>Team Members</h2>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input 
-                        className={styles.confirmInput} 
-                        style={{ marginBottom: 0, minWidth: '200px' }}
+                    <Input 
                         placeholder="Enter email..."
                         value={emailToAdd}
                         onChange={(e) => setEmailToAdd(e.target.value)}
+                        style={{minWidth: '200px'}}
                     />
                     <Button size="sm" onClick={() => addMemberMutation.mutate(emailToAdd)} disabled={!emailToAdd}>
                         <Plus size={16} /> Add
@@ -151,7 +160,7 @@ const ProjectSettings = () => {
                 </div>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div className={styles.tableWrapper}>
                 <table className={styles.table}>
                     <thead>
                         <tr>
@@ -166,7 +175,7 @@ const ProjectSettings = () => {
                                 <td>
                                     <div className={styles.userCell}>
                                         <Avatar src={member.avatar} fallback={member.username?.[0] || 'U'} size="sm" />
-                                        <div>
+                                        <div className={styles.userInfo}>
                                             <div className={styles.userName}>
                                                 {member.first_name ? `${member.first_name} ${member.last_name}` : member.username}
                                             </div>
@@ -177,7 +186,7 @@ const ProjectSettings = () => {
                                 <td><Badge variant="blue">{member.role || 'Member'}</Badge></td>
                                 <td style={{ textAlign: 'right' }}>
                                     <button 
-                                        className={styles.iconBtn}
+                                        className={`${styles.iconBtn} ${styles.deleteBtn}`}
                                         onClick={() => { if(confirm('Remove user?')) removeMemberMutation.mutate(member.id) }}
                                     >
                                         <Trash2 size={16} />
@@ -185,7 +194,7 @@ const ProjectSettings = () => {
                                 </td>
                             </tr>
                         ))}
-                        {!members.length && <tr><td colSpan="3" style={{padding:'2rem', textAlign:'center', color:'#9ca3af'}}>No members yet.</td></tr>}
+                        {!members.length && <tr><td colSpan="3" className={styles.emptyState}>No members yet.</td></tr>}
                     </tbody>
                 </table>
             </div>
@@ -193,28 +202,41 @@ const ProjectSettings = () => {
     );
   };
 
-  // --- TAB 3: LABELS ---
+  // --- TAB 3: LABELS (UPDATED) ---
   const LabelsSettings = () => {
-    const [newLabel, setNewLabel] = useState('');
-    
+    const [newLabelName, setNewLabelName] = useState('');
+    const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[5]); // Default blue
+    const [editingId, setEditingId] = useState(null);
+    const [editName, setEditName] = useState('');
+    const [editColor, setEditColor] = useState('');
+
     const { data: rawLabels } = useQuery({
       queryKey: ['projectLabels', id],
       queryFn: async () => (await api.get(`/projects/${id}/labels/`)).data
     });
 
-    // FIX: Data Normalization
     const labels = useMemo(() => {
       if (!rawLabels) return [];
       if (Array.isArray(rawLabels)) return rawLabels;
       return rawLabels.results || [];
     }, [rawLabels]);
 
+    // Mutations
     const createLabel = useMutation({
-      mutationFn: (name) => api.post(`/projects/${id}/labels/`, { name, color: '#3b82f6' }),
+      mutationFn: () => api.post(`/projects/${id}/labels/`, { name: newLabelName, color: selectedColor }),
       onSuccess: () => {
         queryClient.invalidateQueries(['projectLabels', id]);
-        setNewLabel('');
+        setNewLabelName('');
         toast.success('Label created');
+      }
+    });
+
+    const updateLabel = useMutation({
+      mutationFn: () => api.patch(`/projects/${id}/labels/${editingId}/`, { name: editName, color: editColor }),
+      onSuccess: () => {
+        queryClient.invalidateQueries(['projectLabels', id]);
+        setEditingId(null);
+        toast.success('Label updated');
       }
     });
 
@@ -226,32 +248,86 @@ const ProjectSettings = () => {
       }
     });
 
+    const startEdit = (label) => {
+        setEditingId(label.id);
+        setEditName(label.name);
+        setEditColor(label.color);
+    };
+
     return (
       <div className={styles.contentCard}>
          <h2 className={styles.sectionTitle}>Project Labels</h2>
          <p className={styles.sectionDesc}>Categorize tasks with custom colored tags.</p>
 
-         <div className={styles.addLabelRow}>
-            <div style={{ flex: 1 }}>
-              <Input 
-                 placeholder="New Label Name" 
-                 value={newLabel}
-                 onChange={(e) => setNewLabel(e.target.value)}
-              />
+         {/* Creator Form */}
+         <div className={styles.labelCreator}>
+            <div className={styles.colorPicker}>
+                {PRESET_COLORS.map(c => (
+                    <div 
+                       key={c}
+                       className={`${styles.colorSwatch} ${selectedColor === c ? styles.colorSelected : ''}`}
+                       style={{ backgroundColor: c }}
+                       onClick={() => setSelectedColor(c)}
+                       title={c}
+                    />
+                ))}
             </div>
-            <Button onClick={() => createLabel.mutate(newLabel)} disabled={!newLabel.trim()}>
-               <Plus size={16} style={{ marginRight: '4px' }} /> Add
-            </Button>
+            <div className={styles.createRow}>
+                <div style={{ flex: 1 }}>
+                    <Input 
+                        placeholder="Label Name (e.g. 'Bug', 'Feature')" 
+                        value={newLabelName}
+                        onChange={(e) => setNewLabelName(e.target.value)}
+                    />
+                </div>
+                <Button onClick={() => createLabel.mutate()} disabled={!newLabelName.trim()}>
+                    <Plus size={16} style={{ marginRight: '4px' }} /> Create Label
+                </Button>
+            </div>
          </div>
 
-         <div className={styles.labelsContainer}>
+         {/* Labels List */}
+         <div className={styles.labelsList}>
             {labels.map(label => (
-               <div key={label.id} className={styles.labelChip}>
-                  <div className={styles.labelColor} style={{ background: label.color }} />
-                  <span className={styles.labelName}>{label.name}</span>
-                  <button onClick={() => deleteLabel.mutate(label.id)} className={styles.deleteLabelBtn}>
-                     <X size={14} />
-                  </button>
+               <div key={label.id} className={styles.labelItem}>
+                  {editingId === label.id ? (
+                      <div className={styles.editForm}>
+                          {/* Mini Color Picker for Edit */}
+                          <input 
+                            type="color" 
+                            value={editColor} 
+                            onChange={(e) => setEditColor(e.target.value)}
+                            style={{width: '24px', height: '24px', border:'none', background:'transparent', cursor:'pointer'}}
+                          />
+                          <input 
+                             className={styles.editInput}
+                             value={editName}
+                             onChange={(e) => setEditName(e.target.value)}
+                             autoFocus
+                          />
+                          <button className={styles.iconBtn} onClick={() => updateLabel.mutate()}>
+                             <Check size={16} className="text-green-600" />
+                          </button>
+                          <button className={styles.iconBtn} onClick={() => setEditingId(null)}>
+                             <X size={16} className="text-gray-500" />
+                          </button>
+                      </div>
+                  ) : (
+                      <>
+                        <div className={styles.labelInfo}>
+                           <div className={styles.labelPreview} style={{ backgroundColor: label.color }} />
+                           <span className={styles.labelText}>{label.name}</span>
+                        </div>
+                        <div className={styles.labelActions}>
+                            <button className={styles.iconBtn} onClick={() => startEdit(label)}>
+                                <Edit2 size={16} />
+                            </button>
+                            <button className={`${styles.iconBtn} ${styles.deleteBtn}`} onClick={() => deleteLabel.mutate(label.id)}>
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
+                      </>
+                  )}
                </div>
             ))}
             {!labels.length && <p className={styles.emptyState}>No labels created yet.</p>}
@@ -302,7 +378,7 @@ const ProjectSettings = () => {
                     onChange={(e) => setConfirmText(e.target.value)}
                 />
                 <button 
-                    className={styles.deleteBtn}
+                    className={styles.deleteBtnLarge}
                     disabled={confirmText !== projectData?.name}
                     onClick={() => deleteMutation.mutate()}
                 >
@@ -332,7 +408,7 @@ const ProjectSettings = () => {
 
       <div className={styles.content}>
         {activeTab === TABS.GENERAL && <GeneralSettings />}
-        {activeTab === TABS.MEMBERS && <MembersSettings />}
+        {activeTab === TABS.MEMBERS && <MemberSettings />}
         {activeTab === TABS.LABELS && <LabelsSettings />}
         {activeTab === TABS.DANGER && <DangerSettings />}
       </div>

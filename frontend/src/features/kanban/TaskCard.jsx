@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, CheckSquare, MessageSquare, Paperclip } from 'lucide-react';
+import { Calendar, CheckSquare, MessageSquare, Paperclip, Tag } from 'lucide-react';
 import Avatar from '../../components/ui/Avatar/Avatar';
 import styles from './TaskCard.module.css';
 
@@ -21,11 +21,14 @@ const TaskCard = ({ task, onClick }) => {
   };
 
   const priorityColors = {
-    low: '#3b82f6',      // Blue
-    medium: '#f59e0b',   // Orange
-    high: '#ef4444',     // Red
-    urgent: '#7c3aed'    // Purple
+    low: '#3b82f6',
+    medium: '#f59e0b',
+    high: '#ef4444',
+    urgent: '#7c3aed'
   };
+
+  // Safe access to labels/tags
+  const labels = task.labels || task.tags || [];
 
   return (
     <div
@@ -49,12 +52,20 @@ const TaskCard = ({ task, onClick }) => {
       
       <h4 className={styles.title}>{task.title}</h4>
       
-      {/* Labels / Tags */}
-      {task.tags && task.tags.length > 0 && (
+      {/* ADDED: Labels Display */}
+      {labels.length > 0 && (
         <div className={styles.tags}>
-           {task.tags.map((tag, i) => (
-             <span key={i} className={styles.tag} style={{ background: tag.color || '#e0f2fe', color: tag.text_color || '#0369a1' }}>
-               {tag.name}
+           {labels.map((label, i) => (
+             <span 
+                key={i} 
+                className={styles.tag} 
+                style={{ 
+                    background: label.color || '#e0f2fe', 
+                    color: label.text_color || '#0369a1',
+                    border: `1px solid ${label.color || '#bae6fd'}`
+                }}
+             >
+               {typeof label === 'string' ? label : label.name}
              </span>
            ))}
         </div>
@@ -69,7 +80,6 @@ const TaskCard = ({ task, onClick }) => {
              </span>
            )}
            
-           {/* Activity Counts */}
            {(task.comment_count > 0 || task.attachment_count > 0) && (
              <div className={styles.counts}>
                {task.comment_count > 0 && (

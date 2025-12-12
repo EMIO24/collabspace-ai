@@ -1,204 +1,170 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  MoreVertical, Edit3, Settings, Star, LogOut, Trash2, 
-  Calendar, User, Activity, LayoutGrid, Users, Mail, BarChart3 
+  Settings, Users, Star, UserPlus, FolderOpen, 
+  BarChart2, Grid, MoreVertical, LayoutGrid
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { toast } from 'react-hot-toast';
 import styles from './WorkspaceDetail.module.css';
 
-// Tabs
+// Child Tabs
 import WorkspaceOverview from './tabs/WorkspaceOverview';
 import WorkspaceProjectsList from './tabs/WorkspaceProjectsList';
-import WorkspaceMembers from './tabs/WorkspaceMembers';
-import WorkspaceSettingsTab from './tabs/WorkspaceSettingsTab';
-import WorkspaceInvites from './tabs/WorkspaceInvites';
-import WorkspaceAnalyticsTab from './tabs/WorkspaceAnalyticsTab';
+import WorkspaceMembers from './tabs/WorkspaceMembers'; 
+import WorkspaceSettings from './settings/WorkspaceSettings'; 
+// import AnalyticsDashboard from '../analytics/AnalyticsDashboard'; // Analytics Removed
 
 const TABS = {
   OVERVIEW: 'Overview',
   PROJECTS: 'Projects',
   MEMBERS: 'Members',
-  INVITES: 'Invitations',
-  ANALYTICS: 'Analytics',
   SETTINGS: 'Settings'
 };
 
 const WorkspaceDetail = () => {
   const { id } = useParams();
   const { setCurrentWorkspace } = useWorkspace();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(TABS.OVERVIEW);
-  const [showMenu, setShowMenu] = useState(false);
-  const [isStarred, setIsStarred] = useState(false);
-  const menuRef = useRef(null);
-  const navigate = useNavigate();
-
+  
+  // 1. Fetch Workspace Data
   const { data: workspace, isLoading } = useQuery({
     queryKey: ['workspace', id],
     queryFn: async () => {
       const res = await api.get(`/workspaces/${id}/`);
       setCurrentWorkspace(res.data);
-      setIsStarred(res.data.is_favorite || false);
       return res.data;
     },
-    enabled: !!id
+    enabled: !!id,
+    staleTime: 60000 // Cache for 1 minute to prevent 429s on navigation
   });
-
+  
+  // 2. Fetch Members (For Avatars in Header)
   const { data: members } = useQuery({
-    queryKey: ['workspaceHeaderMembers', id],
+    queryKey: ['workspaceMembers', id],
     queryFn: async () => {
-      const res = await api.get(`/workspaces/${id}/members/`);
-      return Array.isArray(res.data) ? res.data : (res.data.results || []);
+       const res = await api.get(`/workspaces/${id}/members/`);
+       return Array.isArray(res.data) ? res.data : (res.data.results || []);
     },
-    enabled: !!id
+    enabled: !!id,
+    staleTime: 60000
   });
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
+  // Actions
+  const updateMutation = useMutation({
+    mutationFn: (data) => api.put(`/workspaces/${id}/`, data),
+    onSuccess: () => {
+        queryClient.invalidateQueries(['workspace', id]);
+        toast.success('Workspace updated');
+    }
+  });
+
+  const handleNameBlur = (e) => {
+      if (workspace && e.target.value !== workspace.name) {
+          updateMutation.mutate({ name: e.target.value });
       }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  };
 
-  const starMutation = useMutation({
-    mutationFn: () => api.post(`/workspaces/${id}/favorite/`), 
-    onMutate: () => {
-        setIsStarred(!isStarred);
-        toast.success(isStarred ? "Removed from favorites" : "Added to favorites");
-    },
-    onError: () => setIsStarred(!isStarred)
-  });
+  const getWorkspaceIcon = (name) => {
+    const lower = name?.toLowerCase() || '';
+    if (lower.includes('design')) return '🎨';
+    if (lower.includes('dev')) return '👨‍💻';
+    return '🏢';
+  };
 
-  const leaveMutation = useMutation({
-    mutationFn: () => api.delete(`/workspaces/${id}/members/me/`),
-    onSuccess: () => {
-        toast.success("Left workspace");
-        navigate('/workspaces');
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/workspaces/${id}/`),
-    onSuccess: () => {
-        toast.success("Workspace deleted");
-        navigate('/workspaces');
-    }
-  });
-
-  if (isLoading) return <div className="p-10 text-center text-gray-500">Loading workspace...</div>;
-  if (!workspace) return <div className="p-10 text-center text-gray-500">Workspace not found</div>;
-
-  const isOwner = true; 
+  if (isLoading) return <div className={styles.loading}>Loading...</div>;
+  if (!workspace) return <div className={styles.loading}>Workspace not found</div>;
 
   return (
     <div className={styles.container}>
+      
+      {/* PROFESSIONAL BANNER */}
       <div className={styles.banner}>
-        <div className={styles.bannerContent}>
-          <div className={styles.bannerLeft}>
-            <div className={styles.workspaceIcon}>
-              {workspace.name.toLowerCase().includes('design') ? '🎨' : 
-               workspace.name.toLowerCase().includes('market') ? '📈' : '🚀'}
-            </div>
-            <div className={styles.workspaceInfo}>
-              <h1 className={styles.title}>
-                {workspace.name}
-                {isStarred && <Star className={styles.starIcon} fill="currentColor" />}
-              </h1>
-              <p className={styles.description}>{workspace.description || 'Collaborate on creative projects.'}</p>
-              
-              <div className={styles.metaRow}>
-                <div className={styles.avatarStack}>
-                   {members?.slice(0, 4).map((m, i) => (
-                     // FIX: Added Unique Key here
-                     <div key={m.id || i} className={styles.avatar} title={m.email}>
-                        {m.avatar ? <img src={m.avatar} alt="user" className="w-full h-full object-cover rounded-full"/> : (m.username?.[0] || 'U').toUpperCase()}
+         <div className={styles.bannerContent}>
+            <div className={styles.bannerLeft}>
+               <div className={styles.workspaceIcon}>
+                  {getWorkspaceIcon(workspace.name)}
+               </div>
+               <div className={styles.workspaceInfo}>
+                  <input 
+                     defaultValue={workspace.name}
+                     className={styles.nameInput}
+                     onBlur={handleNameBlur}
+                  />
+                  <div className={styles.metaRow}>
+                     <span className={styles.badge}>{workspace.role || 'Member'}</span>
+                     <span>•</span>
+                     <span>{members?.length || 1} Members</span>
+                     <div className={styles.avatarStack}>
+                        {members?.slice(0, 4).map((m, index) => (
+                           <img 
+                              // FIX: Use unique ID or fallback to index to prevent key warning
+                              key={m.id || `member-${index}`} 
+                              src={m.avatar || `https://ui-avatars.com/api/?name=${m.username || 'U'}&background=random`} 
+                              className={styles.stackItem} 
+                              alt="user"
+                           />
+                        ))}
                      </div>
-                   ))}
-                   {(members?.length > 4) && (
-                     <div 
-                        className={`${styles.avatar} ${styles.avatarCount}`}
-                        onClick={() => setActiveTab(TABS.MEMBERS)}
-                     >
-                        +{members.length - 4}
-                     </div>
-                   )}
-                </div>
-              </div>
+                  </div>
+                  {workspace.description && <p className={styles.description}>{workspace.description}</p>}
+               </div>
             </div>
-          </div>
 
-          <div className={styles.bannerRight}>
-            <div className={styles.bannerActions}>
-                <button className={styles.inviteBtn} onClick={() => setActiveTab(TABS.INVITES)}>
-                Invite
-                </button>
-                
-                <div className={styles.menuWrapper} ref={menuRef}>
-                    <button className={styles.menuBtn} onClick={() => setShowMenu(!showMenu)}>
-                        <MoreVertical size={20} />
-                    </button>
-
-                    {showMenu && (
-                        <div className={styles.dropdown}>
-                            <button className={styles.dropdownItem} onClick={() => { setActiveTab(TABS.SETTINGS); setShowMenu(false); }}>
-                                <Edit3 size={16} /> Edit Workspace
-                            </button>
-                            <button className={styles.dropdownItem} onClick={() => { setActiveTab(TABS.SETTINGS); setShowMenu(false); }}>
-                                <Settings size={16} /> Settings
-                            </button>
-                            <button className={styles.dropdownItem} onClick={() => { starMutation.mutate(); setShowMenu(false); }}>
-                                <Star size={16} fill={isStarred ? "currentColor" : "none"} /> {isStarred ? 'Unstar' : 'Star'}
-                            </button>
-                            <div className={styles.divider} />
-                            <button className={styles.dropdownItem} onClick={() => { if(confirm("Leave workspace?")) leaveMutation.mutate(); }}>
-                                <LogOut size={16} /> Leave Workspace
-                            </button>
-                            {isOwner && (
-                                <button className={`${styles.dropdownItem} ${styles.dangerItem}`} onClick={() => { 
-                                    setActiveTab(TABS.SETTINGS); 
-                                    setShowMenu(false); 
-                                    toast("Please scroll to Danger Zone to delete", { icon: 'ℹ️' });
-                                }}>
-                                    <Trash2 size={16} /> Delete Workspace
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
+            <div className={styles.bannerRight}>
+               <div className={styles.actionGroup}>
+                  <button className={styles.headerBtn} onClick={() => setActiveTab(TABS.SETTINGS)}>
+                     <Settings size={18} /> Settings
+                  </button>
+                  <button className={`${styles.headerBtn} ${styles.primaryBtn}`} onClick={() => setActiveTab(TABS.MEMBERS)}>
+                     <UserPlus size={18} /> Invite
+                  </button>
+                  <button 
+                    className={styles.headerBtn} 
+                    onClick={() => updateMutation.mutate({ is_favorite: !workspace.is_favorite })}
+                  >
+                    <Star size={18} className={workspace.is_favorite ? styles.starActive : ''} />
+                  </button>
+               </div>
             </div>
-          </div>
-        </div>
+         </div>
       </div>
 
+      {/* TABS NAVIGATION */}
       <div className={styles.tabsContainer}>
-        <div className={styles.tabsInner}>
-          {Object.values(TABS).map((tab) => (
-            <button
-              key={tab}
-              className={`${styles.tab} ${activeTab === tab ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+         <div className={styles.tabsInner}>
+            {Object.values(TABS).map(tab => (
+               <button 
+                  key={tab} 
+                  className={`${styles.tab} ${activeTab === tab ? styles.activeTab : ''}`}
+                  onClick={() => setActiveTab(tab)}
+               >
+                  {tab}
+               </button>
+            ))}
+         </div>
       </div>
 
+      {/* DYNAMIC CONTENT */}
       <div className={styles.content}>
-        <div className={styles.contentInner}>
-          {activeTab === TABS.OVERVIEW && <WorkspaceOverview workspaceId={id} onTabChange={setActiveTab} />}
-          {activeTab === TABS.PROJECTS && <WorkspaceProjectsList workspaceId={id} />}
-          {activeTab === TABS.MEMBERS && <WorkspaceMembers workspaceId={id} />}
-          {activeTab === TABS.INVITES && <WorkspaceInvites workspaceId={id} />}
-          {activeTab === TABS.ANALYTICS && <WorkspaceAnalyticsTab workspaceId={id} />}
-          {activeTab === TABS.SETTINGS && <WorkspaceSettingsTab workspaceId={id} initialData={workspace} />}
-        </div>
+         <div className={styles.contentInner}>
+            {activeTab === TABS.OVERVIEW && (
+                <WorkspaceOverview workspaceId={id} onTabChange={setActiveTab} />
+            )}
+            {activeTab === TABS.PROJECTS && (
+                <WorkspaceProjectsList workspaceId={id} />
+            )}
+            {activeTab === TABS.MEMBERS && (
+                // FIX: Pass workspaceId explicitly to prevent 404 undefined error
+                <WorkspaceMembers workspaceId={id} /> 
+            )}
+            {activeTab === TABS.SETTINGS && (
+                <WorkspaceSettings />
+            )}
+         </div>
       </div>
 
     </div>

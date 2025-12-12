@@ -21,7 +21,7 @@ const ProjectAnalytics = () => {
   const { id } = useParams();
   const [timeRange, setTimeRange] = useState('all');
 
-  // 1. Fetch Project Details (Contains Aggregate Stats)
+  // 1. Fetch Project Details
   const { data: project, isLoading: loadingProject } = useQuery({
     queryKey: ['project', id],
     queryFn: async () => {
@@ -31,7 +31,7 @@ const ProjectAnalytics = () => {
     enabled: !!id
   });
 
-  // 2. Fetch All Tasks (For detailed charts)
+  // 2. Fetch All Tasks
   const { data: rawTasks, isLoading: loadingTasks } = useQuery({
     queryKey: ['projectTasks', id],
     queryFn: async () => {
@@ -61,7 +61,6 @@ const ProjectAnalytics = () => {
     const counts = { todo: 0, in_progress: 0, review: 0, done: 0 };
     tasks.forEach(t => {
       const s = t.status || 'todo';
-      // Normalize 'completed' to 'done'
       const key = s === 'completed' ? 'done' : s;
       if (counts[key] !== undefined) counts[key]++;
     });
@@ -84,7 +83,7 @@ const ProjectAnalytics = () => {
     return Object.values(map);
   }, [tasks]);
 
-  // Chart 3: Creation Trend (Velocity Proxy)
+  // Chart 3: Creation Trend
   const trendData = useMemo(() => {
     const map = {};
     tasks.forEach(t => {
@@ -92,8 +91,7 @@ const ProjectAnalytics = () => {
       if (!map[date]) map[date] = { date, created: 0 };
       map[date].created++;
     });
-    // Sort by date would go here in a real app, assuming api returns sorted or we sort keys
-    return Object.values(map).slice(-14); // Last 14 entries
+    return Object.values(map).slice(-14);
   }, [tasks]);
 
   // Chart 4: Priority Breakdown
@@ -139,8 +137,8 @@ const ProjectAnalytics = () => {
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className={styles.grid} style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '2rem' }}>
+      {/* Metrics Row (Responsive Class Used Here) */}
+      <div className={styles.metricsRow}>
         <MetricCard 
            label="Completion" 
            value={`${stats.progress_percentage || 0}%`} 
@@ -295,14 +293,15 @@ const MetricCard = ({ label, value, icon: Icon, theme }) => {
   };
   const c = themeColors[theme] || themeColors.blue;
 
+  // Uses .metricCard class from module, ensuring it respects the flex-row layout
   return (
-    <div className={styles.card} style={{ minHeight: 'auto', flexDirection: 'row', alignItems: 'center', gap: '1rem', padding: '1.5rem' }}>
+    <div className={styles.metricCard}>
       <div style={{ padding: '0.75rem', borderRadius: '12px', background: c.bg, color: c.text }}>
          <Icon size={24} />
       </div>
       <div>
-         <div className={styles.metricLabel} style={{ marginBottom: 0 }}>{label}</div>
-         <div className={styles.metricValue} style={{ fontSize: '1.8rem' }}>{value}</div>
+         <div className={styles.metricLabel}>{label}</div>
+         <div className={styles.metricValue}>{value}</div>
       </div>
     </div>
   );

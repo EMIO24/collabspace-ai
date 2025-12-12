@@ -1,7 +1,6 @@
 """
-CollabSpace AI - Tasks Module Models
-Comprehensive task management with dependencies, time tracking, and collaboration features,
-plus support for Task Templates and Checklist Items.
+CollabSpace AI - Tasks Module Models (FINAL)
+Includes Fixes 1-4 for Metadata JSON Serialization Issues AND UUID String Conversion.
 """
 
 from django.db import models
@@ -14,7 +13,6 @@ from decimal import Decimal
 from typing import List, Optional, Dict, Any
 
 # Assuming these are imported from apps.core.models
-# If you eventually merge these, ensure you update the imports.
 class BaseModel(models.Model):
     is_active = models.BooleanField(default=True)
     class Meta:
@@ -57,7 +55,7 @@ class TaskManager(models.Manager):
         return self.filter(parent_task__isnull=True, is_active=True)
 
 
-class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
+class Task(BaseModel, TimeStampedModel):
     """
     Core Task model with comprehensive project management features.
     Supports subtasks, dependencies, time tracking, checklist and rich metadata.
@@ -149,6 +147,13 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         db_index=True,
         help_text='Task due date and time'
     )
+
+    completed_at = models.DateTimeField(
+        null=True, 
+        blank=True, 
+        db_index=True, 
+        help_text="Timestamp when task was marked done"
+    )
     
     estimated_hours = models.DecimalField(
         max_digits=8,
@@ -194,13 +199,14 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
     objects = TaskManager()
     
     class Meta:
-        ordering = ['position', '-created_at'] # ✅ 'created_at' is now available
+        ordering = ['position', '-created_at']
         indexes = [
             models.Index(fields=['project', 'status']),
             models.Index(fields=['assigned_to', 'status']),
             models.Index(fields=['due_date']),
             models.Index(fields=['priority', 'status']),
             models.Index(fields=['parent_task']),
+            models.Index(fields=['project', 'completed_at']),
         ]
         verbose_name = 'Task'
         verbose_name_plural = 'Tasks'
@@ -212,12 +218,11 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         """Validate task data."""
         super().clean()
         
-        # Prevent circular parent relationships (simplified check)
+        # Prevent circular parent relationships
         if self.parent_task:
             if self.parent_task == self:
                 raise ValidationError("A task cannot be its own parent.")
             
-            # Check for circular dependencies (more expensive, but necessary for deep hierarchy)
             parent = self.parent_task
             while parent:
                 if parent == self:
@@ -237,22 +242,37 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         self.full_clean()
         super().save(*args, **kwargs)
     
+    # --- HELPER METHOD: Ensure metadata is valid ---
+    def _ensure_metadata_dict(self):
+        """Ensure metadata is always a valid dictionary."""
+        if not isinstance(self.metadata, dict):
+            self.metadata = {}
+    
     # --- CHECKLIST METHODS ---
     
     def get_checklist_items(self) -> List[Dict[str, Any]]:
         """Get the list of checklist items from metadata."""
+        self._ensure_metadata_dict()
         return self.metadata.get('checklist', [])
 
     def add_checklist_item(self, text: str, is_completed: bool = False):
         """Add a new checklist item and save."""
-        checklist = self.get_checklist_items()
+        self._ensure_metadata_dict()
+        
+        # Create a new dict to force Django to recognize the change
+        metadata_copy = dict(self.metadata)
+        checklist = metadata_copy.get('checklist', [])
+        
         checklist.append({
-            'id': len(checklist) + 1,  # Simple ID for client-side use
+            'id': len(checklist) + 1,
             'text': text,
             'is_completed': is_completed,
             'created_at': timezone.now().isoformat(),
         })
-        self.metadata['checklist'] = checklist
+        
+        metadata_copy['checklist'] = checklist
+        self.metadata = metadata_copy
+        
         self.save(update_fields=['metadata'])
 
     def get_checklist_progress(self) -> float:
@@ -264,7 +284,7 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         completed = sum(1 for item in checklist if item.get('is_completed'))
         return (completed / total) * 100
 
-    # Time tracking methods (rest of the original methods remain the same)
+    # Time tracking methods
     def get_actual_hours(self) -> Decimal:
         """Calculate actual hours logged from time entries."""
         total = self.time_entries.aggregate(
@@ -292,12 +312,7 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
     
     # Subtask methods
     def get_all_subtasks(self, include_self: bool = False) -> List['Task']:
-        """
-        Get all subtasks recursively.
-        """
-        # Note: This is a recursive query that can be slow for very deep hierarchies.
-        # It's better to use a CTE or specialized library (like django-tree-queries)
-        # for production-grade deep hierarchy traversal, but this implementation is functional.
+        """Get all subtasks recursively."""
         subtasks = []
         if include_self:
             subtasks.append(self)
@@ -350,9 +365,7 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
     # Dependency methods
     def add_dependency(self, depends_on_task: 'Task', 
                         dependency_type: str = 'blocks') -> 'TaskDependency':
-        """
-        Add a dependency to another task.
-        """
+        """Add a dependency to another task."""
         return TaskDependency.objects.create(
             task=self,
             depends_on=depends_on_task,
@@ -383,24 +396,103 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         """Check if task can be started (no incomplete blocking dependencies)."""
         return not self.is_blocked()
     
-    # Status methods
+    # --- HELPER FOR AI ANALYTICS ---
+    def _record_status_change(self, old_status, new_status, user):
+        """Helper to create history records for AI bottleneck analysis."""
+        if old_status == new_status:
+            return
+
+        last_history = self.status_history.order_by('-created_at').first()
+        duration = 0
+        if last_history:
+            diff = timezone.now() - last_history.created_at
+            duration = diff.total_seconds() / 3600.0
+
+        TaskStatusHistory.objects.create(
+            task=self,
+            old_status=old_status,
+            new_status=new_status,
+            changed_by=user,
+            duration_hours=Decimal(duration) if last_history else None
+        )
+
+    # --- UPDATED ASSIGNMENT & STATUS METHODS WITH METADATA VALIDATION ---
+
+    def assign(self, user: User, assigned_by: User = None):
+        """
+        Assign task to a user and record audit metadata.
+        FIXED: Ensures metadata is always a valid dict before saving.
+        FIXED: Converts UUID to string for JSON serialization.
+        """
+        if self.assigned_to == user:
+            return
+
+        self.assigned_to = user
+        
+        # ✅ ROBUST FIX: Ensure metadata is always a valid dictionary
+        self._ensure_metadata_dict()
+        
+        # Record assignment history in metadata
+        if assigned_by:
+            # Create a new dict to force Django to recognize the change
+            metadata_copy = dict(self.metadata)
+            # ✅ Convert UUID to string
+            metadata_copy['assigned_by'] = str(assigned_by.id)
+            metadata_copy['assigned_at'] = timezone.now().isoformat()
+            self.metadata = metadata_copy
+            
+        self.save(update_fields=['assigned_to', 'metadata', 'updated_at'])
+
     def mark_as_done(self, user: User = None):
-        """Mark task as done and update metadata."""
+        """
+        Mark task as done, update metadata, and record history for Analytics.
+        FIXED: Ensures metadata is always a valid dict before saving.
+        FIXED: Converts UUID to string for JSON serialization.
+        """
+        # Record history before changing status
+        self._record_status_change(self.status, self.STATUS_DONE, user)
+        
         self.status = self.STATUS_DONE
+        self.completed_at = timezone.now()
+        
+        # ✅ ROBUST FIX: Ensure metadata is always a valid dictionary
+        self._ensure_metadata_dict()
+        
+        # Create a new dict to force Django to recognize the change
+        metadata_copy = dict(self.metadata)
         if user:
-            self.metadata['completed_by'] = user.id
-        self.metadata['completed_at'] = timezone.now().isoformat()
+             # ✅ Convert UUID to string
+            metadata_copy['completed_by'] = str(user.id)
+        metadata_copy['completed_at'] = timezone.now().isoformat()
+        self.metadata = metadata_copy
+        
         self.save()
     
     def mark_as_in_progress(self, user: User = None):
-        """Mark task as in progress."""
+        """
+        Mark task as in progress and record history for Analytics.
+        FIXED: Ensures metadata is always a valid dict before saving.
+        FIXED: Converts UUID to string for JSON serialization.
+        """
         if not self.can_start():
             raise ValidationError("Cannot start task: blocked by dependencies.")
         
+        # Record history before changing status
+        self._record_status_change(self.status, self.STATUS_IN_PROGRESS, user)
+        
         self.status = self.STATUS_IN_PROGRESS
+        
+        # ✅ ROBUST FIX: Ensure metadata is always a valid dictionary
+        self._ensure_metadata_dict()
+        
         if user and not self.metadata.get('started_by'):
-            self.metadata['started_by'] = user.id
-            self.metadata['started_at'] = timezone.now().isoformat()
+            # Create a new dict to force Django to recognize the change
+            metadata_copy = dict(self.metadata)
+             # ✅ Convert UUID to string
+            metadata_copy['started_by'] = str(user.id)
+            metadata_copy['started_at'] = timezone.now().isoformat()
+            self.metadata = metadata_copy
+        
         self.save()
     
     def is_overdue(self) -> bool:
@@ -417,19 +509,15 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         """Get all users involved with this task."""
         user_ids = set()
         
-        # Assigned user
         if self.assigned_to:
             user_ids.add(self.assigned_to.id)
         
-        # Creator
         if self.created_by:
             user_ids.add(self.created_by.id)
         
-        # Commenters
         comment_users = self.comments.values_list('user_id', flat=True)
         user_ids.update(comment_users)
         
-        # Time entry users
         time_entry_users = self.time_entries.values_list('user_id', flat=True)
         user_ids.update(time_entry_users)
         
@@ -446,7 +534,6 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
             'checklist_items': len(self.get_checklist_items()),
         }
     
-    # Search and filter helpers
     def matches_tags(self, tags: List[str]) -> bool:
         """Check if task has any of the given tags."""
         return any(tag in self.tags for tag in tags)
@@ -466,11 +553,31 @@ class Task(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         )[:limit]
 
 
+# ============================================================================
+# TaskStatusHistory Model
+# ============================================================================
+
+class TaskStatusHistory(models.Model):
+    """Tracks the history of status changes for bottleneck analysis."""
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='status_history')
+    old_status = models.CharField(max_length=20, choices=Task.STATUS_CHOICES, null=True, blank=True)
+    new_status = models.CharField(max_length=20, choices=Task.STATUS_CHOICES)
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    duration_hours = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['task', 'new_status']),
+            models.Index(fields=['created_at']),
+        ]
+        verbose_name = 'Task Status History'
+        verbose_name_plural = 'Task Status Histories'
+
+
 class TaskDependency(models.Model):
-    """
-    Model for task dependencies to manage task relationships.
-    Prevents starting tasks until dependencies are completed.
-    """
+    """Model for task dependencies to manage task relationships."""
     
     TYPE_BLOCKS = 'blocks'
     TYPE_BLOCKED_BY = 'blocked_by'
@@ -519,17 +626,14 @@ class TaskDependency(models.Model):
         if self.task == self.depends_on:
             raise ValidationError("A task cannot depend on itself.")
         
-        # Check for circular dependencies
         if self._creates_circular_dependency():
             raise ValidationError("This dependency would create a circular relationship.")
         
-        # Validate tasks are in the same project
         if self.task.project != self.depends_on.project:
             raise ValidationError("Dependencies must be within the same project.")
     
     def _creates_circular_dependency(self) -> bool:
         """Check if this dependency would create a circular relationship."""
-        # Note: This recursive check can be performance-intensive on large graphs.
         visited = set()
         stack = [self.depends_on]
         
@@ -543,7 +647,6 @@ class TaskDependency(models.Model):
             
             visited.add(current.id)
             
-            # Add all tasks this one depends on
             for dep in current.dependencies.filter(dependency_type=self.TYPE_BLOCKS):
                 stack.append(dep.depends_on)
         
@@ -555,8 +658,8 @@ class TaskDependency(models.Model):
         super().save(*args, **kwargs)
 
 
-class TaskComment(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
-    # ... (TaskComment implementation remains the same) ...
+class TaskComment(BaseModel, TimeStampedModel):
+    """Task comments with threading support."""
     task = models.ForeignKey(
         Task,
         on_delete=models.CASCADE,
@@ -592,7 +695,7 @@ class TaskComment(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
     )
     
     class Meta:
-        ordering = ['created_at'] # ✅ 'created_at' is now available
+        ordering = ['created_at']
         indexes = [
             models.Index(fields=['task']),
             models.Index(fields=['user']),
@@ -608,10 +711,9 @@ class TaskComment(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         """Validate comment data."""
         super().clean()
         
-        # Prevent deeply nested threading
         if self.parent_comment:
             depth = self.get_thread_depth()
-            if depth > 5:  # Max 5 levels of nesting
+            if depth > 5:
                 raise ValidationError("Comment threading is limited to 5 levels.")
     
     def get_thread_depth(self) -> int:
@@ -637,7 +739,7 @@ class TaskComment(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
     
     def is_edited(self) -> bool:
         """Check if comment has been edited."""
-        return self.updated_at > self.created_at # ✅ 'updated_at' is now available
+        return self.updated_at > self.created_at
     
     def extract_mentions(self) -> List[str]:
         """Extract @mentions from content."""
@@ -646,15 +748,14 @@ class TaskComment(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         return re.findall(pattern, self.content)
     
     def notify_mentions(self):
-        """Notify mentioned users (implement with notification system)."""
-        # Placeholder for notification integration
+        """Notify mentioned users."""
         mentioned_usernames = self.extract_mentions()
         mentioned_users = User.objects.filter(username__in=mentioned_usernames)
         self.mentions.set(mentioned_users)
 
 
 class TaskAttachment(TimeStampedModel):
-    # ... (TaskAttachment implementation remains the same) ...
+    """File attachments for tasks."""
     task = models.ForeignKey(
         Task,
         on_delete=models.CASCADE,
@@ -726,7 +827,7 @@ class TaskAttachment(TimeStampedModel):
 
 
 class TimeEntry(TimeStampedModel):
-    # ... (TimeEntry implementation remains the same) ...
+    """Time tracking entries for tasks."""
     task = models.ForeignKey(
         Task,
         on_delete=models.CASCADE,
@@ -778,7 +879,6 @@ class TimeEntry(TimeStampedModel):
         if self.hours > 24:
             raise ValidationError("Cannot log more than 24 hours per entry.")
         
-        # Validate date is not in the future
         if self.date > timezone.now().date():
             raise ValidationError("Cannot log time for future dates.")
     
@@ -809,11 +909,7 @@ class TimeEntry(TimeStampedModel):
         return total or Decimal('0.00')
 
 
-# ============================================================================
-# NEW MODEL: TaskTemplate
-# ============================================================================
-
-class TaskTemplate(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
+class TaskTemplate(BaseModel, TimeStampedModel):
     """
     Reusable task templates for common task types.
     Users can create templates and instantiate tasks from them.
@@ -823,7 +919,7 @@ class TaskTemplate(BaseModel, TimeStampedModel): # 👈 ADDED TimeStampedModel
         max_length=200,
         help_text='Template name'
     )
-    
+
     description = models.TextField(
         blank=True,
         help_text='Template description'

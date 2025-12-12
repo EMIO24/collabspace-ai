@@ -37,7 +37,7 @@ CODE:
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=1500,
+            max_tokens=8000,
             use_pro=False
         )
         return {'review': response.get('text', 'Failed to review code.')}
@@ -56,7 +56,7 @@ Return only the code block, starting and ending with the correct markdown fence 
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=2048,
+            max_tokens=8048,
             use_pro=False
         )
         return {'code': response.get('text', 'Failed to generate code.')}
@@ -76,7 +76,7 @@ CODE:
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=800,
+            max_tokens=8000,
             use_pro=False
         )
         return {'explanation': response.get('text', 'Failed to explain code.')}
@@ -101,7 +101,7 @@ First, state the fix. Second, provide the full corrected code snippet in a markd
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=1024,
+            max_tokens=8024,
             use_pro=False
         )
         return {'debug_solution': response.get('text', 'Failed to debug code.')}
@@ -123,7 +123,7 @@ CODE:
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=1500,
+            max_tokens=8500,
             use_pro=False
         )
         return {'tests': response.get('text', 'Failed to generate tests.')}
@@ -145,7 +145,7 @@ Provide the refactored code with a brief explanation of changes made.
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=2000,
+            max_tokens=8000,
             use_pro=False
         )
         return {'refactored_code': response.get('text', 'Failed to refactor code.')}
@@ -167,7 +167,7 @@ Provide only the converted {to_language} code in a markdown code block.
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=2000,
+            max_tokens=8000,
             use_pro=True  # Use Pro for better language understanding
         )
         return {'converted_code': response.get('text', 'Failed to convert code.')}

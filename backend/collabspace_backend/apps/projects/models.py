@@ -10,6 +10,8 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 from django.conf import settings
+from django.db.models import Count, Q
+from decimal import Decimal
 
 from apps.core.models import BaseModel, TimeStampedModel
 
@@ -326,6 +328,32 @@ class Project(BaseModel):
             return None
         return (self.end_date - self.start_date).days
 
+    def update_statistics(self):
+        """Recalculate task counts and progress based on related tasks."""
+        
+        # 1. Aggregate data from related tasks
+        # Assumes your Task model has: related_name='tasks', status='done', is_active=True
+        stats = self.tasks.filter(is_active=True).aggregate(
+            total=Count('id'),
+            completed=Count('id', filter=Q(status='done'))
+        )
+
+        total = stats['total'] or 0
+        completed = stats['completed'] or 0
+
+        # 2. Update counts
+        self.task_count = total
+        self.completed_task_count = completed
+
+        # 3. Calculate progress percentage
+        if total > 0:
+            percent = (completed / total) * 100
+            self.progress = Decimal(percent)
+        else:
+            self.progress = Decimal(0.00)
+
+        # 4. Save only these fields to DB (efficient)
+        self.save(update_fields=['task_count', 'completed_task_count', 'progress'])
 
 class ProjectMember(TimeStampedModel):
     """

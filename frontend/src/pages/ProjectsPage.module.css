@@ -5,7 +5,10 @@
   padding: 2rem;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* Allow natural scrolling */
+  min-height: 100%;
+  height: auto;
+  overflow: visible;
 }
 
 /* Header */
@@ -14,6 +17,8 @@
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 2rem;
+  flex-wrap: wrap; /* Allow wrapping */
+  gap: 1rem;
 }
 
 .title {
@@ -36,7 +41,7 @@
   align-items: center;
   margin-bottom: 2rem;
   gap: 1rem;
-  flex-wrap: wrap;
+  flex-wrap: wrap; /* Essential for responsiveness */
   background: white;
   padding: 1rem;
   border-radius: 16px;
@@ -47,8 +52,15 @@
 .filters {
   display: flex;
   gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 2px;
+  overflow-x: auto; /* Horizontal scroll on mobile */
+  padding-bottom: 2px; /* Prevent scrollbar hiding content */
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+
+.filters::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
 }
 
 .filterChip {
@@ -61,7 +73,8 @@
   color: #6b7280;
   cursor: pointer;
   transition: all 0.2s;
-  white-space: nowrap;
+  white-space: nowrap; /* Keep chips on one line */
+  flex-shrink: 0;
 }
 
 .filterChip:hover {
@@ -80,6 +93,7 @@
   display: flex;
   gap: 1rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .searchWrapper {
@@ -124,7 +138,7 @@
 /* Grid View */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
   padding-bottom: 4rem;
 }
@@ -145,6 +159,9 @@
   box-shadow: 0 20px 40px -5px rgba(0,0,0,0.4);
   z-index: 100;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 90%;
+  max-width: 600px;
+  justify-content: space-between;
 }
 
 .bulkInfo {
@@ -173,6 +190,7 @@
   align-items: center;
   gap: 0.5rem;
   transition: background 0.2s;
+  white-space: nowrap;
 }
 
 .bulkBtn:hover {
@@ -198,4 +216,77 @@
   border-radius: 24px;
   border: 2px dashed #e5e7eb;
   color: #9ca3af;
+}
+
+/* --- RESPONSIVE BREAKPOINTS --- */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  /* Make header button full width on mobile */
+  .header button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+  }
+
+  .filters {
+    width: 100%;
+    padding-bottom: 0.5rem;
+  }
+
+  .actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .searchWrapper {
+    width: 100%;
+  }
+
+  .select {
+    width: 100%;
+  }
+
+  .grid {
+    grid-template-columns: 1fr; /* Single column on mobile */
+    gap: 1rem;
+  }
+
+  /* Bulk bar adjustments for mobile */
+  .bulkBar {
+    width: 94%;
+    padding: 1rem;
+    bottom: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+    border-radius: 16px;
+    align-items: stretch;
+  }
+
+  .bulkInfo {
+    justify-content: center;
+  }
+
+  .bulkActions {
+    justify-content: space-between;
+  }
+  
+  .bulkBtn {
+    flex: 1;
+    justify-content: center;
+  }
 }

@@ -1,173 +1,169 @@
-import React, { useState } from 'react';
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { 
+  FolderOpen, CheckCircle, Users, Activity, Plus, UserPlus, BarChart3
+} from 'lucide-react';
 import { api } from '../../../services/api';
-import { Globe, Smartphone, Bot } from 'lucide-react'; 
+import Avatar from '../../../components/ui/Avatar/Avatar';
+import Button from '../../../components/ui/Button/Button';
 import styles from './WorkspaceOverview.module.css';
 
 const WorkspaceOverview = ({ workspaceId, onTabChange }) => {
-  const [activityFilter, setActivityFilter] = useState('all');
+  const navigate = useNavigate();
 
   // 1. Fetch Stats
   const { data: stats } = useQuery({
     queryKey: ['workspaceStats', workspaceId],
-    queryFn: async () => (await api.get(`/workspaces/${workspaceId}/stats/`)).data,
-  });
-
-  // 2. Fetch Active Projects
-  const { data: rawProjects, isLoading: loadingProjects } = useQuery({
-    queryKey: ['workspaceActiveProjects', workspaceId],
     queryFn: async () => {
-      const res = await api.get(`/projects/?workspace=${workspaceId}&limit=5`);
-      return res.data;
+      try {
+         const res = await api.get(`/analytics/workspace/${workspaceId}/metrics/?range=30d`);
+         return {
+            projects: res.data.overview?.total_projects || 0,
+            members: res.data.overview?.total_members || 0,
+            tasks: res.data.overview?.total_tasks || 0,
+            health: res.data.overview?.activity_rate || 0
+         };
+      } catch (e) {
+         const basicRes = await api.get(`/workspaces/${workspaceId}/`);
+         return {
+            projects: basicRes.data.project_count || 0,
+            members: basicRes.data.member_count || 0,
+            tasks: 0,
+            health: 0
+         };
+      }
     }
   });
 
-  const projects = Array.isArray(rawProjects) ? rawProjects : (rawProjects?.results || []);
-
-  // 3. Fetch Activity (Infinite Scroll)
-  const {
-    data: activityData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading: loadingActivity
-  } = useInfiniteQuery({
-    queryKey: ['workspaceActivity', workspaceId, activityFilter],
-    queryFn: async ({ pageParam = 1 }) => {
-      // Append filter type if not 'all'
-      const typeParam = activityFilter !== 'all' ? `&type=${activityFilter}` : '';
-      const res = await api.get(`/workspaces/${workspaceId}/activity/?page=${pageParam}${typeParam}`);
+  // 2. Fetch Recent Projects (Rename data to rawProjects)
+  const { data: rawProjects } = useQuery({
+    queryKey: ['workspaceProjects', workspaceId],
+    queryFn: async () => {
+      const res = await api.get(`/projects/?workspace=${workspaceId}&limit=5`);
       return res.data; 
-    },
-    getNextPageParam: (lastPage) => lastPage.next ? lastPage.next : undefined,
-    enabled: !!workspaceId
+    }
   });
 
-  const activities = activityData?.pages.flatMap(page => page.results) || [];
+  // FIX: Data Normalization
+  const projects = useMemo(() => {
+    if (!rawProjects) return [];
+    if (Array.isArray(rawProjects)) return rawProjects;
+    if (rawProjects.results && Array.isArray(rawProjects.results)) return rawProjects.results;
+    return [];
+  }, [rawProjects]);
 
-  const getProjectIcon = (name) => {
-    const lower = name.toLowerCase();
-    if (lower.includes('web')) return <Globe size={20} className="text-blue-500" />;
-    if (lower.includes('app')) return <Smartphone size={20} className="text-purple-500" />;
-    return <Bot size={20} className="text-green-500" />;
-  };
+  // 3. Fetch Activity
+  const { data: rawActivity } = useQuery({
+    queryKey: ['workspaceActivity', workspaceId],
+    queryFn: async () => {
+       try { return (await api.get('/auth/activity/feed/')).data; } 
+       catch { return []; }
+    }
+  });
+
+  // FIX: Data Normalization for Activity
+  const timeline = useMemo(() => {
+      if (!rawActivity) return [];
+      const list = Array.isArray(rawActivity) ? rawActivity : (rawActivity.results || []);
+      return list.slice(0, 5);
+  }, [rawActivity]);
 
   return (
-    <div className={styles.container}>
-      
-      {/* Quick Stats */}
-      <div>
-        <h3 className={styles.sectionTitle}>Quick Stats</h3>
-        <div className={styles.statsGrid}>
-          <div className={styles.statCard} onClick={() => onTabChange('Projects')}>
-            <div className={styles.statValue}>{stats?.active_projects || 0}</div>
-            <div className={styles.statLabel}>Projects</div>
-          </div>
-          <div className={styles.statCard} onClick={() => onTabChange('Analytics')}>
-            <div className={styles.statValue}>{stats?.completed_tasks || 0}</div>
-            <div className={styles.statLabel}>Tasks</div>
-          </div>
-          <div className={styles.statCard} onClick={() => onTabChange('Members')}>
-            <div className={styles.statValue}>{stats?.members_count || 0}</div>
-            <div className={styles.statLabel}>Members</div>
-          </div>
-          <div className={styles.statCard}>
-            <div className={styles.statValue}>{stats?.health_score || '100'}%</div>
-            <div className={styles.statLabel}>Health</div>
-          </div>
-        </div>
+    <div className={styles.grid}>
+      {/* --- LEFT COL --- */}
+      <div className={styles.mainCol}>
+         
+         {/* Stats Grid */}
+         <div className={styles.statsGrid}>
+            <StatCard label="Total Projects" value={stats?.projects || 0} icon={FolderOpen} color="blue" />
+            <StatCard label="Total Tasks" value={stats?.tasks || 0} icon={CheckCircle} color="green" />
+            <StatCard label="Team Members" value={stats?.members || 0} icon={Users} color="orange" />
+            <StatCard label="Activity Rate" value={`${stats?.health || 0}%`} icon={Activity} color="purple" />
+         </div>
+
+         {/* Active Projects */}
+         <div className={styles.card}>
+            <div className={styles.cardHeader}>
+               <h3 className={styles.cardTitle}>Active Projects</h3>
+               <button className={styles.linkBtn} onClick={() => onTabChange('Projects')}>View All →</button>
+            </div>
+            <div className={styles.projectList}>
+               {projects.map(project => (
+                  <div key={project.id} className={styles.projectRow} onClick={() => navigate(`/projects/${project.id}`)}>
+                     <div className={styles.projectIcon}>{project.name ? project.name[0].toUpperCase() : 'P'}</div>
+                     <div className={styles.projectInfo}>
+                        <div className={styles.projectName}>{project.name}</div>
+                        <div className={styles.progressBar}>
+                           <div className={styles.progressFill} style={{width: `${project.progress || 0}%`}} />
+                        </div>
+                     </div>
+                     <div className={styles.projectMeta}>
+                        <span className={styles.statusBadge}>{project.status}</span>
+                        <span className={styles.date}>{new Date(project.updated_at).toLocaleDateString()}</span>
+                     </div>
+                  </div>
+               ))}
+               {!projects.length && <div className={styles.emptyState}>No projects yet.</div>}
+            </div>
+         </div>
       </div>
 
-      {/* Split View */}
-      <div className={styles.splitGrid}>
-        
-        {/* Active Projects */}
-        <div>
-          <h3 className={styles.sectionTitle}>Active Projects</h3>
-          <div className={styles.projectList}>
-            {loadingProjects ? (
-              <div className="p-4 text-gray-400">Loading...</div>
-            ) : projects.length > 0 ? (
-              projects.map(p => (
-                <div key={p.id} className={styles.projectRow} onClick={() => onTabChange('Projects')}>
-                  <div className={styles.projectInfo}>
-                    <div className={styles.projectName}>
-                      {getProjectIcon(p.name)}
-                      {p.name}
-                    </div>
-                    <div className={styles.projectBar}>
-                      <div className={styles.projectFill} style={{ width: `${p.progress || 0}%` }} />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-blue-600 text-sm">{p.progress || 0}%</span>
-                    <span className={styles.projectDue}>
-                       {p.end_date ? `Due: ${new Date(p.end_date).toLocaleDateString()}` : 'No Due Date'}
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className={styles.emptyState}>No active projects found.</div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className={styles.sectionTitle} style={{marginBottom:0}}>Recent Activity</h3>
-          </div>
-          
-          {/* Filters */}
-          <div className={styles.filterBar}>
-             {['all', 'task', 'project', 'member'].map(f => (
-               <button 
-                 key={f}
-                 className={`${styles.filterBtn} ${activityFilter === f ? styles.activeFilter : ''}`}
-                 onClick={() => setActivityFilter(f)}
-               >
-                 {f.charAt(0).toUpperCase() + f.slice(1)}s
+      {/* --- RIGHT COL --- */}
+      <div className={styles.sideCol}>
+         
+         {/* Quick Actions */}
+         <div className={styles.card}>
+            <h3 className={styles.cardTitle}>Quick Actions</h3>
+            <div className={styles.actionList}>
+               <button className={styles.actionBtn} onClick={() => onTabChange('Projects')}>
+                  <Plus size={16} /> Create Project
                </button>
-             ))}
-          </div>
+               <button className={styles.actionBtn} onClick={() => onTabChange('Members')}>
+                  <UserPlus size={16} /> Invite Member
+               </button>
+               <button className={styles.actionBtn} onClick={() => onTabChange('Analytics')}>
+                  <BarChart3 size={16} /> View Analytics
+               </button>
+            </div>
+         </div>
 
-          <div className={styles.activityList}>
-            {loadingActivity ? (
-               <div className="p-4 text-gray-400">Loading...</div>
-            ) : activities.length > 0 ? (
-              activities.map((act, i) => (
-                <div key={act.id || i} className={styles.activityItem}>
-                  <div className={`${styles.dot} ${styles.purpleDot}`} />
-                  <p className={styles.activityText}>
-                    {act.description}
-                  </p>
-                  <span className={styles.activityTime}>
-                    {act.created_at ? new Date(act.created_at).toLocaleString() : 'Just now'}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="text-sm text-gray-400">No recent activity.</div>
-            )}
-
-            {/* Load More */}
-            {hasNextPage && (
-              <button 
-                className={styles.loadMoreBtn} 
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-              >
-                {isFetchingNextPage ? 'Loading...' : 'Load More'}
-              </button>
-            )}
-          </div>
-        </div>
+         {/* Activity Timeline */}
+         <div className={styles.card}>
+            <h3 className={styles.cardTitle}>Recent Activity</h3>
+            <div className={styles.timeline}>
+               {timeline.map((item, i) => (
+                  <div key={i} className={styles.timelineItem}>
+                     <div className={styles.timelineDot} />
+                     <div className={styles.timelineContent}>
+                        <p className={styles.timelineText}>
+                           <strong>{item.user_name || 'User'}</strong> {item.description}
+                        </p>
+                        <span className={styles.timelineTime}>
+                           {new Date(item.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                        </span>
+                     </div>
+                  </div>
+               ))}
+               {!timeline.length && <div className={styles.emptyState}>No recent activity.</div>}
+            </div>
+         </div>
 
       </div>
-
     </div>
   );
 };
+
+const StatCard = ({ label, value, icon: Icon, color }) => (
+   <div className={styles.statCard}>
+      <div className={`${styles.iconBox} ${styles[color]}`}>
+         <Icon size={20} />
+      </div>
+      <div>
+         <div className={styles.statValue}>{value}</div>
+         <div className={styles.statLabel}>{label}</div>
+      </div>
+   </div>
+);
 
 export default WorkspaceOverview;

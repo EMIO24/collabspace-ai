@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
-import { Sparkles, BarChart2, MessageSquare, Zap } from 'lucide-react';
+import { Sparkles, MessageSquare, Zap, Code } from 'lucide-react';
 import styles from '../features/ai/AIHub.module.css';
 
 // Sub-components
-import AIAnalyticsDashboard from '../features/ai/AIAnalyticsDashboard';
 import AIMeetingProcessor from '../features/ai/AIMeetingProcessor';
 import AITaskPlayground from '../features/ai/AITaskPlayground';
+import AICodeAssistant from '../features/ai/AICodeAssistant';
 
 const TOOLS = [
-  { id: 'analytics', title: 'Analytics', desc: 'Forecasts & Burnout detection.', icon: BarChart2, color: 'purple' },
   { id: 'meetings', title: 'Meetings', desc: 'Summarize & extract actions.', icon: MessageSquare, color: 'green' },
   { id: 'tasks', title: 'Task Ops', desc: 'Breakdown & estimate tasks.', icon: Zap, color: 'orange' },
+  { id: 'code', title: 'Code Assistant', desc: 'Review, Refactor & Test.', icon: Code, color: 'blue' },
 ];
 
 const AIHubPage = () => {
-  const [activeTool, setActiveTool] = useState('analytics');
+  const [activeTool, setActiveTool] = useState('meetings');
 
   return (
     <div className={styles.container}>
@@ -44,9 +44,9 @@ const AIHubPage = () => {
       </div>
 
       <div className={styles.content}>
-        {activeTool === 'analytics' && <AIAnalyticsDashboard />}
         {activeTool === 'meetings' && <AIMeetingProcessor />}
         {activeTool === 'tasks' && <AITaskPlayground />}
+        {activeTool === 'code' && <AICodeAssistant />}
       </div>
     </div>
   );

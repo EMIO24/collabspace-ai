@@ -13,6 +13,26 @@ from .models import Task, TaskComment, TaskAttachment, TimeEntry, TaskDependency
 User = get_user_model()
 
 
+# =============================================================================
+# 1. Project Statistics Update Signal
+# =============================================================================
+
+@receiver(post_save, sender=Task)
+@receiver(post_delete, sender=Task)
+def update_project_stats(sender, instance, **kwargs):
+    """
+    Triggered whenever a Task is saved or deleted.
+    Recalculates the parent Project's statistics (progress, task counts).
+    """
+    if instance.project:
+        if hasattr(instance.project, 'update_statistics'):
+            instance.project.update_statistics()
+
+
+# =============================================================================
+# 2. Existing Notification & Metadata Signals
+# =============================================================================
+
 @receiver(pre_save, sender=Task)
 def task_pre_save(sender, instance, **kwargs):
     """
@@ -47,9 +67,13 @@ def task_pre_save(sender, instance, **kwargs):
                 if 'assignment_history' not in instance.metadata:
                     instance.metadata['assignment_history'] = []
                 
+                # ✅ FIX: Convert UUIDs to strings before saving to JSON
+                old_user_id = str(old_task.assigned_to.id) if old_task.assigned_to else None
+                new_user_id = str(instance.assigned_to.id) if instance.assigned_to else None
+
                 instance.metadata['assignment_history'].append({
-                    'from': old_task.assigned_to.id if old_task.assigned_to else None,
-                    'to': instance.assigned_to.id if instance.assigned_to else None,
+                    'from': old_user_id,
+                    'to': new_user_id,
                     'changed_at': timezone.now().isoformat(),
                 })
         
@@ -77,86 +101,41 @@ def task_post_save(sender, instance, created, **kwargs):
         }
         
         # Notify project members
-        project_members = instance.project.members.all()
-        for member in project_members:
-            if member != instance.created_by:
-                Notification.objects.create(
-                    user=member,
-                    **notification_data
-                )
-    
+        if instance.project:
+            project_members = instance.project.members.all()
+            for member in project_members:
+                if member.user != instance.created_by:
+                    Notification.objects.create(
+                        user=member.user,
+                        **notification_data
+                    )
     else:
-        # Task updated
-        old_task = Task.objects.get(pk=instance.pk)
-        
-        # Notify on assignment
-        if hasattr(instance, '_assignment_changed'):
-            if instance.assigned_to:
-                Notification.objects.create(
-                    user=instance.assigned_to,
-                    type='task_assigned',
-                    title='Task Assigned',
-                    message=f'You have been assigned to "{instance.title}"',
-                    related_object_type='task',
-                    related_object_id=instance.id,
-                    action_url=f'/tasks/{instance.id}/',
-                )
+        # Notify on assignment (handled in view or pre_save mostly, kept here for consistency if needed)
+        pass
 
 
 @receiver(post_save, sender=Task)
 def task_status_changed(sender, instance, created, **kwargs):
     """
-    Handle task status changes.
-    Send notifications when status changes.
+    Handle task status changes notifications.
     """
     if not created and instance.pk:
-        try:
-            old_task = Task.objects.get(pk=instance.pk)
-            
-            if old_task.status != instance.status:
-                from apps.notifications.models import Notification
-                
-                # Notify assigned user
-                if instance.assigned_to and instance.assigned_to != instance.created_by:
-                    Notification.objects.create(
-                        user=instance.assigned_to,
-                        type='task_status_changed',
-                        title='Task Status Updated',
-                        message=f'Task "{instance.title}" status changed to {instance.get_status_display()}',
-                        related_object_type='task',
-                        related_object_id=instance.id,
-                        action_url=f'/tasks/{instance.id}/',
-                    )
-                
-                # Notify creator
-                if instance.created_by and instance.created_by != instance.assigned_to:
-                    Notification.objects.create(
-                        user=instance.created_by,
-                        type='task_status_changed',
-                        title='Task Status Updated',
-                        message=f'Task "{instance.title}" status changed to {instance.get_status_display()}',
-                        related_object_type='task',
-                        related_object_id=instance.id,
-                        action_url=f'/tasks/{instance.id}/',
-                    )
-                
-                # If task is completed, notify all collaborators
-                if instance.status == Task.STATUS_DONE:
-                    collaborators = instance.get_collaborators()
-                    for collaborator in collaborators:
-                        if collaborator not in [instance.assigned_to, instance.created_by]:
-                            Notification.objects.create(
-                                user=collaborator,
-                                type='task_completed',
-                                title='Task Completed',
-                                message=f'Task "{instance.title}" has been completed',
-                                related_object_type='task',
-                                related_object_id=instance.id,
-                                action_url=f'/tasks/{instance.id}/',
-                            )
+        from apps.notifications.models import Notification
         
-        except Task.DoesNotExist:
-            pass
+        # If task is completed, notify collaborators
+        if instance.status == Task.STATUS_DONE:
+             collaborators = instance.get_collaborators()
+             for collaborator in collaborators:
+                 if collaborator not in [instance.assigned_to, instance.created_by]:
+                     Notification.objects.create(
+                         user=collaborator,
+                         type='task_completed',
+                         title='Task Completed',
+                         message=f'Task "{instance.title}" has been completed',
+                         related_object_type='task',
+                         related_object_id=instance.id,
+                         action_url=f'/tasks/{instance.id}/',
+                     )
 
 
 @receiver(post_save, sender=TaskComment)
@@ -283,15 +262,18 @@ def time_entry_logged(sender, instance, created, **kwargs):
         if not task.metadata:
             task.metadata = {}
         
+        # ✅ FIX: Convert user ID to string
+        user_id_str = str(instance.user.id)
+
         if 'time_tracking' not in task.metadata:
             task.metadata['time_tracking'] = {
                 'last_logged': timezone.now().isoformat(),
-                'last_logged_by': instance.user.id,
+                'last_logged_by': user_id_str,
                 'total_entries': 1
             }
         else:
             task.metadata['time_tracking']['last_logged'] = timezone.now().isoformat()
-            task.metadata['time_tracking']['last_logged_by'] = instance.user.id
+            task.metadata['time_tracking']['last_logged_by'] = user_id_str
             task.metadata['time_tracking']['total_entries'] = task.time_entries.count()
         
         task.save(update_fields=['metadata'])
@@ -433,4 +415,3 @@ def check_task_due_dates():
                     'action_url': f'/tasks/{task.id}/',
                 }
             )
-            

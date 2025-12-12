@@ -1,0 +1,221 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  /* Mobile: Natural height to allow scrolling */
+  height: auto;
+  min-height: 100%;
+  padding-bottom: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    /* Desktop: Fixed height for split scrolling panes */
+    height: 100%;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  height: auto;
+}
+
+@media (min-width: 1024px) {
+  .column {
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 0.5rem; /* Space for scrollbar */
+  }
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex: 1; 
+  /* Ensure card doesn't shrink too much */
+  min-height: max-content;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.iconWrapper {
+  padding: 0.5rem;
+  border-radius: 10px;
+  background: #f0f9ff;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  font-size: 0.9rem;
+  color: #334155;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.select:hover, .select:focus {
+  background-color: white;
+  border-color: #cbd5e1;
+}
+
+.textInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background-color: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.codeEditor {
+  width: 100%;
+  flex: 1;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  color: #334155;
+  font-family: 'Menlo', 'Monaco', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  min-height: 300px;
+}
+
+.codeEditor:focus {
+  background-color: white;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+/* Result Box */
+.resultBox {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 300px;
+}
+
+.resultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  color: #15803d;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(21, 128, 61, 0.1);
+}
+
+.resultContent {
+  flex: 1;
+  overflow: auto;
+}
+
+.codeBlock {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.05);
+  font-family: 'Menlo', monospace;
+  font-size: 0.85rem;
+  color: #334155;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.errorBox {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.errorBox .resultHeader {
+  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.1);
+}
+
+.placeholder {
+  color: #94a3b8;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px; /* Ensure visual height when empty */
+  border: 2px dashed #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.copyBtn {
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.copyBtn:hover {
+  color: #38bdf8;
+  background: rgba(0,0,0,0.05);
+}

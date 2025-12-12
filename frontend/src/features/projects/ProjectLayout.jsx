@@ -21,11 +21,15 @@ const ProjectLayout = () => {
     enabled: !!id
   });
 
+  // FIX: Changed PUT to PATCH to allow partial updates (fixes 400 Bad Request)
   const updateMutation = useMutation({
-    mutationFn: (data) => api.put(`/projects/${id}/`, data),
+    mutationFn: (data) => api.patch(`/projects/${id}/`, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['project', id]);
       toast.success('Project updated');
+    },
+    onError: (err) => {
+        toast.error(err.response?.data?.message || 'Update failed');
     }
   });
 

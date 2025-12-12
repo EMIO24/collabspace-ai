@@ -12,7 +12,8 @@
   padding: 1.5rem 2rem 0 2rem;
   position: sticky;
   top: 0;
-  z-index: 30; 
+  z-index: 30;
+  transition: padding 0.2s;
 }
 
 .headerTop {
@@ -20,12 +21,16 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap; /* Allow wrapping */
+  gap: 1rem;
 }
 
 .projectIdentity {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-grow: 1;
+  min-width: 200px;
 }
 
 .projectIcon {
@@ -38,11 +43,13 @@
   justify-content: center;
   font-size: 1.5rem;
   color: #2563eb;
+  flex-shrink: 0;
 }
 
 .nameContainer {
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .nameInput {
@@ -54,6 +61,9 @@
   padding: 0.25rem 0.5rem;
   border-radius: 6px;
   transition: all 0.2s;
+  width: 100%;
+  max-width: 400px;
+  text-overflow: ellipsis;
 }
 
 .nameInput:hover {
@@ -67,15 +77,16 @@
 }
 
 .lastUpdated {
-  font-size: 0.75rem; /* text-xs */
-  color: #9ca3af; /* text-gray-400 */
-  padding: 0 0.5rem; /* px-2 */
+  font-size: 0.75rem; 
+  color: #9ca3af; 
+  padding: 0 0.5rem; 
 }
 
 .headerActions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .actionBtn {
@@ -116,8 +127,8 @@
   color: #4b5563;
   background: white;
   cursor: pointer;
-  padding-right: 2rem; /* Make room for chevron */
-  appearance: none; /* Hide default arrow */
+  padding-right: 2rem; 
+  appearance: none; 
 }
 
 .selectIcon {
@@ -133,6 +144,13 @@
 .tabs {
   display: flex;
   gap: 2rem;
+  overflow-x: auto; /* Enable scroll on overflow */
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+  -webkit-overflow-scrolling: touch;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
 }
 
 .tab {
@@ -143,6 +161,8 @@
   text-decoration: none;
   position: relative;
   transition: color 0.2s;
+  white-space: nowrap; /* Keep tabs single line */
+  flex-shrink: 0; /* Prevent squishing */
 }
 
 .tab:hover {
@@ -156,7 +176,7 @@
 .activeTab::after {
   content: '';
   position: absolute;
-  bottom: -1px; /* Overlap border */
+  bottom: -1px; 
   left: 0;
   width: 100%;
   height: 2px;
@@ -173,4 +193,45 @@
   padding: 2rem;
   text-align: center;
   color: #6b7280;
+}
+
+/* --- RESPONSIVE ADJUSTMENTS --- */
+
+@media (max-width: 768px) {
+  .header {
+    padding: 1rem;
+  }
+
+  .headerTop {
+    flex-direction: column; /* Stack Identity and Actions */
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .headerActions {
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .selectWrapper {
+    flex: 1;
+  }
+  
+  .statusSelect {
+    width: 100%;
+  }
+
+  .tabs {
+    gap: 1.5rem;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 0.5rem;
+  }
+  
+  .content {
+    padding: 1rem;
+  }
+  
+  .nameInput {
+    font-size: 1.25rem;
+  }
 }

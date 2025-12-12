@@ -1,3 +1,4 @@
+/* --- Layout --- */
 .container {
   display: flex;
   justify-content: center;
@@ -7,13 +8,13 @@
 
 .contentWrapper {
   width: 100%;
-  max-width: 800px; /* Centered focus */
+  max-width: 900px;
   display: flex;
   flex-direction: column;
   gap: 2rem;
 }
 
-/* Card Styling */
+/* --- Cards --- */
 .card {
   background: white;
   border-radius: 16px;
@@ -48,7 +49,7 @@
 .iconYellow { background: #fef9c3; color: #ca8a04; }
 .iconBlue { background: #eff6ff; color: #2563eb; }
 
-/* Inputs */
+/* --- Form Inputs --- */
 .inputGroup {
   display: flex;
   flex-direction: column;
@@ -101,7 +102,7 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-/* Actions Grid */
+/* --- Buttons --- */
 .actionsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -109,7 +110,20 @@
   margin-top: 1rem;
 }
 
-/* Result Box */
+.fullWidthBtn {
+  width: 100%;
+}
+
+.iconMr {
+  margin-right: 0.5rem;
+}
+
+.gridBtn {
+  justify-content: center;
+  font-size: 0.875rem;
+}
+
+/* --- Result Container --- */
 .resultBox {
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
@@ -123,14 +137,178 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   font-weight: 700;
   color: #15803d;
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(21, 128, 61, 0.1);
 }
 
+.closeBtn {
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.closeBtn:hover {
+  color: #475569;
+}
+
+.errorBox {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.errorBox .resultHeader {
+  color: #b91c1c;
+  border-color: rgba(185, 28, 28, 0.1);
+}
+
+/* --- Rendered Content Styles --- */
+
+/* 1. Plain Text Output */
+.resultTextWrapper {
+  white-space: pre-wrap;
+  font-family: sans-serif;
+  font-size: 0.875rem;
+  color: #334155;
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  line-height: 1.625;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* 2. Task List (Array) */
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.taskItem {
+  background-color: white;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.taskItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.taskTitle {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.taskIndex {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.75rem;
+}
+
+.taskTag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #f1f5f9;
+  color: #475569;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.taskDesc {
+  font-size: 0.875rem;
+  color: #475569;
+  padding-left: 2rem;
+}
+
+/* 3. Result Cards (Estimate, Priority) */
+.resultCard {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+.resultCardFlex {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background-color: white;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.resultIcon {
+  margin: 0 auto 0.75rem auto;
+}
+
+.resultTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.resultText {
+  color: #475569;
+}
+
+/* 4. Assignee */
+.assigneeIconBox {
+  padding: 0.75rem;
+  background-color: #eef2ff;
+  border-radius: 50%;
+  color: #4f46e5;
+}
+
+.assigneeLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.assigneeValue {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* Fallback */
 .jsonOutput {
   font-family: 'Menlo', monospace;
   font-size: 0.85rem;
@@ -138,20 +316,6 @@
   white-space: pre-wrap;
   margin: 0;
   line-height: 1.6;
-}
-
-.errorBox {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
-}
-
-.errorBox .resultHeader {
-  color: #b91c1c;
-}
-
-.errorBox .jsonOutput {
-  color: #7f1d1d;
 }
 
 @keyframes fadeIn {

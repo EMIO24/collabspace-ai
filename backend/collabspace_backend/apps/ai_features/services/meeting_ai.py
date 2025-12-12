@@ -1,4 +1,5 @@
 import json
+import re  # Added for robust JSON extraction
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel as PydanticBaseModel, Field
 
@@ -46,6 +47,11 @@ class MeetingAIService:
             max_tokens=8000,
             use_pro=True
         )
+        
+        if isinstance(response, dict) and 'error' in response:
+             print(f"ERROR: Summarize Meeting failed: {response['error']}")
+             return {'summary': f"Error: {response['error']}"}
+
         return {'summary': response.get('text', 'Failed to generate meeting summary.')}
 
     # -------------------------
@@ -65,19 +71,49 @@ class MeetingAIService:
             f"Transcript: {transcript_context}"
         )
         
+        print("DEBUG: Extracting action items...")
+        
         response = self.ai.generate_completion(
             user=user,
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=1500,
+            max_tokens=8500,
             use_pro=use_pro
         )
         
+        # 1. Check for API Errors
+        if isinstance(response, dict) and 'error' in response:
+            print(f"ERROR: Extract Action Items API failed: {response['error']}")
+            # We return a special key 'error' inside the list so frontend can see it, 
+            # or just return empty list + log. Better to log for now.
+            return {'action_items': [], 'error': response['error']}
+
+        raw_text = response.get('text', '[]')
+        
+        # 2. Robust JSON Parsing (Strip Markdown)
+        cleaned_text = raw_text.strip()
+        if cleaned_text.startswith("```json"):
+            cleaned_text = cleaned_text[7:]
+        elif cleaned_text.startswith("```"):
+            cleaned_text = cleaned_text[3:]
+        if cleaned_text.endswith("```"):
+            cleaned_text = cleaned_text[:-3]
+        
+        cleaned_text = cleaned_text.strip()
+        
+        # Regex fallback to find the list
+        match = re.search(r'\[.*\]', cleaned_text, re.DOTALL)
+        if match:
+            cleaned_text = match.group(0)
+
         try:
-            items = json.loads(response.get('text', '[]'))
+            items = json.loads(cleaned_text)
+            print(f"DEBUG: Successfully extracted {len(items)} action items.")
             return {'action_items': items}
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(f"ERROR: Action Items JSON Parse Error: {e}")
+            print(f"DEBUG: Raw Text received: {raw_text}")
             return {'action_items': []}
 
     # -------------------------
@@ -92,13 +128,21 @@ class MeetingAIService:
             f"'Overall Sentiment: [POSITIVE/NEUTRAL/NEGATIVE]. Rationale: [One concise sentence].' "
             f"\nTranscript: {transcript_context}"
         )
+        
+        print("DEBUG: Analyzing sentiment...")
+
         response = self.ai.generate_completion(
             user=user,
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=150
+            max_tokens=8050
         )
+        
+        if isinstance(response, dict) and 'error' in response:
+            print(f"ERROR: Sentiment Analysis failed: {response['error']}")
+            return {'sentiment': f"Error: {response['error']}"}
+
         return {'sentiment': response.get('text', 'Failed to analyze sentiment.')}
 
     # -------------------------
@@ -118,6 +162,11 @@ class MeetingAIService:
             feature_type=self.FEATURE_TYPE,
             max_tokens=1000
         )
+        
+        if isinstance(response, dict) and 'error' in response:
+            print(f"ERROR: Extract Decisions failed: {response['error']}")
+            return {'decisions': f"Error: {response['error']}"}
+            
         return {'decisions': response.get('text', 'Failed to extract decisions.')}
 
     # -------------------------
@@ -141,12 +190,20 @@ class MeetingAIService:
             f"Use the following summary as the body content, ensuring a clear subject line (e.g., 'Summary: [Meeting Topic]'). "
             f"{action_item_section}.\n\nMeeting Summary:\n{meeting_summary}"
         )
+        
+        print("DEBUG: Drafting follow-up email...")
+
         response = self.ai.generate_completion(
             user=user,
             workspace=workspace,
             prompt=prompt,
             feature_type=self.FEATURE_TYPE,
-            max_tokens=1000,
+            max_tokens=8000,
             use_pro=False
         )
+
+        if isinstance(response, dict) and 'error' in response:
+            print(f"ERROR: Email Draft failed: {response['error']}")
+            return {'email': f"Error: {response['error']}"}
+
         return {'email': response.get('text', 'Failed to draft follow-up email.')}

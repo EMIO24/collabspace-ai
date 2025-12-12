@@ -5,11 +5,14 @@
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+  padding-bottom: 2rem;
 }
 
+/* Stack columns on tablets and mobile */
 @media (max-width: 1024px) {
   .container {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 }
 
@@ -18,9 +21,14 @@
   background: white;
   border-radius: 16px;
   padding: 1.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   margin-bottom: 1.5rem;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
 }
 
 .sectionTitle {
@@ -28,6 +36,9 @@
   font-weight: 700;
   color: #1f2937;
   margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 /* Description Editor */
@@ -35,7 +46,7 @@
   width: 100%;
   min-height: 150px;
   padding: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.95rem;
@@ -56,24 +67,25 @@
 /* Key Dates */
 .datesGrid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .datesGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dateInput {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-size: 0.9rem;
   color: #374151;
   background: #fff;
   transition: border-color 0.2s;
-}
-
-.dateInput:focus {
-  outline: none;
-  border-color: #3b82f6;
 }
 
 /* Labels */
@@ -111,48 +123,4 @@
   border-color: #3b82f6;
   color: #2563eb;
   background: #eff6ff;
-}
-
-/* Team List */
-.memberList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.memberItem {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.memberItem:hover {
-  background: #f9fafb;
-}
-
-.memberInfo {
-  display: flex;
-  flex-direction: column;
-}
-
-.memberName {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: #1f2937;
-}
-
-.memberRole {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.emptyText {
-  color: #9ca3af;
-  font-size: 0.9rem;
-  font-style: italic;
-  text-align: center;
-  padding: 1rem;
 }

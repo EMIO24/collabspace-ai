@@ -55,7 +55,7 @@ class AIRateLimitSerializer(serializers.ModelSerializer):
         return max(0, obj.minute_limit - obj.requests_this_minute)
 
 
-# --- Input Serializers (API Validation) ---
+# --- Task AI Serializers ---
 
 class TaskAISummarizeSerializer(serializers.Serializer):
     """Serializer for task summarization."""
@@ -123,12 +123,97 @@ class TaskAIAssigneeSerializer(serializers.Serializer):
         return data
 
 
+class TaskAIDependencySerializer(serializers.Serializer):
+    """Serializer for detecting task dependencies."""
+    task_description = serializers.CharField(max_length=5000)
+    existing_tasks = serializers.ListField(
+        child=serializers.CharField(max_length=500),
+        default=list
+    )
+
+
+class TaskAITagsSerializer(serializers.Serializer):
+    """Serializer for generating task tags."""
+    task_description = serializers.CharField(max_length=5000)
+    max_tags = serializers.IntegerField(default=5, min_value=1, max_value=10)
+
+
+class TaskAIStatusUpdateSerializer(serializers.Serializer):
+    """Serializer for drafting status updates."""
+    task_title = serializers.CharField(max_length=255)
+    recent_activities = serializers.ListField(
+        child=serializers.CharField(max_length=1000),
+        min_length=1
+    )
+    target_audience = serializers.CharField(max_length=100, default="project manager")
+
+
+# --- Meeting AI Serializers ---
+
 class MeetingTranscribeSerializer(serializers.Serializer):
     """Serializer for meeting transcript processing."""
     transcript = serializers.CharField(max_length=50000)
     auto_create_tasks = serializers.BooleanField(default=False)
     project_id = serializers.UUIDField(required=False, allow_null=True)
-    
+
+
+class MeetingEmailSerializer(serializers.Serializer):
+    """Serializer for drafting follow-up emails."""
+    meeting_summary = serializers.CharField(max_length=10000)
+    attendees = serializers.ListField(
+        child=serializers.CharField(max_length=255)
+    )
+    sender = serializers.CharField(max_length=255)
+    include_action_items = serializers.BooleanField(default=True)
+
+
+# --- Code AI Serializers ---
+
+class CodeAIReviewSerializer(serializers.Serializer):
+    """Serializer for code review."""
+    code = serializers.CharField(max_length=50000)
+    language = serializers.CharField(max_length=50)
+
+
+class CodeAIGenerateSerializer(serializers.Serializer):
+    """Serializer for code generation."""
+    description = serializers.CharField(max_length=5000)
+    language = serializers.CharField(max_length=50)
+
+
+class CodeAIExplainSerializer(serializers.Serializer):
+    """Serializer for code explanation."""
+    code = serializers.CharField(max_length=10000)
+    language = serializers.CharField(max_length=50)
+
+
+class CodeAIDebugSerializer(serializers.Serializer):
+    """Serializer for debugging code."""
+    code = serializers.CharField(max_length=10000)
+    error_message = serializers.CharField(max_length=5000)
+
+
+class CodeAITestsSerializer(serializers.Serializer):
+    """Serializer for generating tests."""
+    code = serializers.CharField(max_length=10000)
+    language = serializers.CharField(max_length=50)
+
+
+class CodeAIRefactorSerializer(serializers.Serializer):
+    """Serializer for refactoring code."""
+    code = serializers.CharField(max_length=10000)
+    language = serializers.CharField(max_length=50)
+    refactor_goal = serializers.CharField(max_length=500, default="improve readability")
+
+
+class CodeAIConvertSerializer(serializers.Serializer):
+    """Serializer for converting code between languages."""
+    code = serializers.CharField(max_length=10000)
+    from_language = serializers.CharField(max_length=50)
+    to_language = serializers.CharField(max_length=50)
+
+
+# --- Analytics & Assistant Serializers ---
 
 class AnalyticsForecastSerializer(serializers.Serializer):
     """Serializer for analytics forecasting."""
@@ -137,7 +222,7 @@ class AnalyticsForecastSerializer(serializers.Serializer):
         choices=['low', 'medium', 'high'],
         default='medium'
     )
-    
+
 
 class AssistantChatSerializer(serializers.Serializer):
     """Serializer for AI assistant chat."""

@@ -1,140 +1,122 @@
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   width: 100%;
 }
 
 .header {
-  margin-bottom: 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-main);
+  color: #1e293b;
   margin: 0;
 }
 
-/* Dropzone */
+/* Upload Zone */
 .dropzone {
-  border: 2px dashed var(--glass-border);
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: var(--radius-lg);
-  padding: 3rem;
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  padding: 2rem;
   text-align: center;
-  margin-bottom: 2rem;
-  transition: all 0.2s ease;
+  background: #f8fafc;
   cursor: pointer;
+  transition: all 0.2s;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 1rem;
 }
 
 .dropzone:hover, .dropzoneActive {
-  border-color: var(--primary);
-  background: var(--primary-light);
+  border-color: #6366f1;
+  background: #eff6ff;
 }
 
 .uploadIcon {
-  color: var(--primary);
-  opacity: 0.8;
+  padding: 0.75rem;
   background: white;
-  padding: 1rem;
   border-radius: 50%;
-  box-shadow: var(--shadow-soft);
+  color: #6366f1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .dropText {
-  font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-main);
+  color: #334155;
 }
 
 .dropSubtext {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: #94a3b8;
 }
 
-/* Files Grid */
+/* File Grid */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  /* Responsive columns */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 1.5rem;
 }
 
 .fileCard {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem;
   position: relative;
   transition: transform 0.2s, box-shadow 0.2s;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.75rem;
   cursor: pointer;
 }
 
 .fileCard:hover {
   transform: translateY(-4px);
-  box-shadow: var(--shadow-hover);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+  border-color: #cbd5e1;
 }
 
 .preview {
-  width: 100%;
   height: 120px;
-  background: rgba(0, 0, 0, 0.03);
+  background: #f1f5f9;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 0.75rem;
   overflow: hidden;
-  margin-bottom: 0.5rem;
 }
 
 .previewImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s;
-}
-
-.fileCard:hover .previewImg {
-  transform: scale(1.05);
-}
-
-.fileIcon {
-  color: var(--text-muted);
 }
 
 .fileName {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-main);
-  word-break: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  color: #1e293b;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.25rem;
 }
 
 .fileMeta {
-  font-size: 0.75rem;
-  color: var(--text-muted);
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #94a3b8;
 }
 
-/* Actions Menu */
+/* Actions */
 .actions {
   position: absolute;
   top: 0.5rem;
@@ -148,16 +130,23 @@
 }
 
 .actionBtn {
-  background: white;
-  border: 1px solid var(--glass-border);
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
   padding: 0.25rem;
-  color: var(--text-muted);
+  color: #64748b;
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .actionBtn:hover {
-  color: var(--danger);
-  background: var(--danger-light);
+  color: #ef4444;
+  background: white;
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on very small screens */
+    gap: 1rem;
+  }
 }
